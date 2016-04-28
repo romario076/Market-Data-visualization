@@ -462,8 +462,8 @@ shinyServer(function(input, output, session) {
     
     if (nrow(data.frame(event)) <1 & input$spread==TRUE) {
         py<- plot_ly(subset(plotdelay(), tPrice>0), x = Time, y = tPrice, name="Price",mode = "markers", text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1, color=color, opacity= alpha() ))
-        py<- add_trace(plotdelay(), x=Time, y=Bid_P, name = "Bid", line = l)
-        py<- add_trace(plotdelay(), x=Time, y=Ask_P, name = "Ask", line = l, fill="tonexty") 
+        py<- add_trace(plotdelay(), x=Time, y=Bid_P, name = "Bid", line = l, hoverinfo = "none")
+        py<- add_trace(plotdelay(), x=Time, y=Ask_P, name = "Ask", line = l, fill="tonexty", hoverinfo = "none") 
         py<-  layout(showlegend = FALSE,hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
         py<- layout(xaxis=xax, yaxis=yax)
         
