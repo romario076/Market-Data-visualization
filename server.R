@@ -7,7 +7,6 @@ suppressWarnings( library(knitr))
 suppressWarnings( library(dplyr))
 suppressWarnings( library(xts))
 suppressWarnings( library(scales))
-
 Sys.setenv(TZ='GMT')
 
 
