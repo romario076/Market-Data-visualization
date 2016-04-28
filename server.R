@@ -14,7 +14,7 @@ MarketData<- function(date, from, to, Symbol) {
   From<- paste("'", from, "'", sep="")
   To<- paste("'", to, "'", sep="")
   Symbol<- paste("'", Symbol, "'", sep="")
-  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
   ss<- paste0("select concat(Timestamp, ' ',Time) as Time, Reason,Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, if((tType='OPG' or tType='CLX'),1, tShares) as tShares1, IF (tSide='BID','red', IF (tSide='ASK', 'green', 'blue')) as color from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, "")    
   #ss1<- paste0("select Time,tPrice, MidPrice, Bid_P, Ask_P, tShares, color, tSide, tShares, IF(tShares1>2,round(tShares1),2) as tShares1 from (select  concat(Timestamp, ' ',Time) as Time,(Bid_P+Ask_P)/2 as MidPrice, tPrice,  Bid_P, Ask_P, tShares, tSide, IF (tSide='BID','red', IF (tSide='ASK', 'green', 'blue')) as color, (tShares/(select max(tShares) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ")) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ") as a")
   query <- dbSendQuery(mydb, ss)
@@ -31,7 +31,7 @@ Printu<- function(date, from, to, symbol) {
   From<- paste("'", from, "'", sep="")
   To<- paste("'", to, "'", sep="")
   Symbol<-paste("'", symbol, "'", sep="")
-  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
   ss<- paste0("select concat(Timestamp, ' ',min(Time)) as Time, tType, tPrice from ","`",as.symbol(date),"`", "  where Symbol=", Symbol," and (tType='OPG' or tType='CLX') and tPrice>0 and Time>",From," and Time<=",To, " group by tType")
   query <- dbSendQuery(mydb, ss)
   data <- fetch(query, n= -1)
@@ -48,7 +48,7 @@ PrevCLX2<- function(date, symbol) {
   date1<- as.Date(date)-1
   data<- data.frame()
   pp<- function(date1, From, To, Symbol){
-    mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+    mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
     ss<- paste0("select concat(Timestamp, ' ',min(Time)) as Time, tType, tPrice, tVenue from ","`",as.symbol(as.character(date1)),"`", "  where Symbol=", Symbol," and tType='CLX' group by tType, tVenue")
     query <- dbSendQuery(mydb, ss)
     data <- fetch(query, n= -1)
@@ -89,7 +89,7 @@ PrevCLX<- function(date, symbol) {
   #if (ex=="A") {exchange<- "AMEX"}
   
   pp<- function(date1, From, To, Symbol){
-    mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+    mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
     ss<- paste0("select  tType, tPrice, MsgSource from ","`",as.symbol(as.character(date1)),"`", "  where Symbol=", Symbol," and tType='CLX' group by tType, MsgSource")
     query <- dbSendQuery(mydb, ss)
     data <- fetch(query, n= -1)
@@ -108,7 +108,7 @@ PrevCLX<- function(date, symbol) {
   data<- data[data$MsgSource %in% exchange, ]
   if (nrow(data)==0) {
       Timestamp<- paste("'", date1, "'", sep="")
-      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
       ss3<- paste0("select  tType, tPrice, MsgSource from ","`",as.symbol(as.character(date1)),"`", "  where Timestamp=",Timestamp," and Symbol=", Symbol," and tPrice>0 order by Time DESC limit 1")
       query3 <- dbSendQuery(mydb, ss3)
       data <- fetch(query3, n= -1)
@@ -117,7 +117,7 @@ PrevCLX<- function(date, symbol) {
   }
   if (nrow(data)>0 & data$tPrice==0) {
       Timestamp<- paste("'", date1, "'", sep="")
-      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.15')
+      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
       ss3<- paste0("select  tType, tPrice, MsgSource from ","`",as.symbol(as.character(date1)),"`", "  where Timestamp=",Timestamp," and Symbol=", Symbol," and tPrice>0 order by Time DESC limit 1")
       query3 <- dbSendQuery(mydb, ss3)
       data <- fetch(query3, n= -1)
