@@ -18,7 +18,7 @@ MarketData<- function(date, from, to, Symbol) {
   To<- paste("'", to, "'", sep="")
   Symbol<- paste("'", Symbol, "'", sep="")
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.40')
-  ss<- paste0("select concat(Timestamp, ' ',Time) as Time, Reason,Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, if((tType='OPG' or tType='CLX'),1, tShares) as tShares1, IF (tSide='BID','red', IF (tSide='ASK', 'green', 'blue')) as color from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, "")    
+  ss<- paste0("select concat(Timestamp, ' ',Time) as Time, Reason,Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, if((tType='OPG' or tType='CLX'),1, tShares) as tShares1, IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '007FFF')) as color from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, "")    
   #ss1<- paste0("select Time,tPrice, MidPrice, Bid_P, Ask_P, tShares, color, tSide, tShares, IF(tShares1>2,round(tShares1),2) as tShares1 from (select  concat(Timestamp, ' ',Time) as Time,(Bid_P+Ask_P)/2 as MidPrice, tPrice,  Bid_P, Ask_P, tShares, tSide, IF (tSide='BID','red', IF (tSide='ASK', 'green', 'blue')) as color, (tShares/(select max(tShares) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ")) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ") as a")
   query <- dbSendQuery(mydb, ss)
   data <- fetch(query, n= -1)
@@ -144,9 +144,9 @@ Orders<- function(date, from, to, symbol) {
   To<- paste("'", to, "'", sep="")
   
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.21')
-  select2<- paste0('select concat(`date`," ", `timestamp`) as Time, `strategy`, `messagetype`, `exchange`, `orderid`,`side`, `price`, `timeinforce`, `type`,`sharesexecuted` as Shares,
+  select2<- paste0('select concat(`date`," ", `timestamp`) as Time, `strategy`, `messagetype`, `exchange`, `orderid`,`side`, `price`, `timeinforce`, substring_index(`type`,"|",-1) as type,`sharesexecuted` as Shares,
                    CASE
-                   when exchange="NSDQ_OUCH_BK" then "purple"
+                   when exchange="NSDQ_OUCH_BK" then "EE00EE"
                    when exchange="ARCA_DIRECT_BK" then "maroon"
                    when exchange="NOMURA_FIX_BK" then "gold"
                    when exchange="NYSE_UTP_BK" then "moccasin"
@@ -324,7 +324,7 @@ shinyServer(function(input, output, session) {
     }
     #data<- data[data$tPrice>0,]
     #data$tPrice<- as.numeric(as.character(data$tPrice))
-    data$tSide<- as.character(data$tSide)
+    #data$tSide<- as.character(data$tSide)
     data$tShares1<- as.integer(rescale(as.numeric(data$tShares1), c(4,14)))
     return(data)
   })
@@ -344,9 +344,16 @@ shinyServer(function(input, output, session) {
   alpha<- reactive({0.6})
   alpha1<- reactive({0.8})
   Hline<-reactive({15}) 
-  Font<- reactive({9})
+  Font<- reactive({11})
   
-  y0<- reactive({min(plotdelay()$tPrice[plotdelay()$tPrice>0]) })
+  fillcolor = reactive({"#ff6666"})
+  hollowcolor = reactive({"#39ac73"})
+  plotcolor = reactive({"#3E3E3E"})
+  papercolor = reactive({"#1E2022"})
+  fontcolor = reactive({"#B3A78C"})
+  
+  plotDelayGreater<- reactive({ plotdelay()[plotdelay()$tPrice>0, ] })
+  y0<- reactive({min( plotDelayGreater()$tPrice ) })
   y1<- reactive({max(plotdelay()$tPrice) })
   
   pp<- reactive({ Printu(date =dateText(), from=input$from, to=input$to, symbol= input$text ) })
@@ -370,7 +377,6 @@ shinyServer(function(input, output, session) {
     return(dd)
   })
   
-  
   trendPlot <- renderPlotly({
     withProgress(message = 'Creating plot', value = 0.1, {
       
@@ -383,43 +389,50 @@ shinyServer(function(input, output, session) {
         tickfont = list(color = "darkblue")
       )
       event<- event_data("plotly_selected", source = "subset")
+      event<- event[event$y>0, ]
       
-      l<- list( color = toRGB("grey90", alpha = 0.1),
-                fillcolor = toRGB("grey90", alpha = 0.1),
-                shape = "hv",
-                width = .001)
+      if (input$radio==1) {
+        l<- list( color = toRGB("grey90", alpha = 0.1),
+                  fillcolor = toRGB("grey90", alpha = 0.1),
+                  shape = "hv",
+                  width = .00001)
+        
+      } else {
+        l<- list( color = toRGB("grey40", alpha = 0.1),
+                  fillcolor = toRGB("grey40", alpha = 0.1),
+                  shape = "hv",
+                  width = .00001)
+        
+      }
       
       dd<- dd()
-      ###For PrevClx
-      #if (input$prevclx) { PrevClose<- data.frame(Time=c(plotdelay()$Time[1], tail(plotdelay()$Time,1)), tPrice=c(PrevClose()$tPrice, PrevClose()$tPrice)) }
-      
       
       if (nrow(data.frame(event)) <1 & input$spread==FALSE) {
         #list(size=Size(),color=ifelse(tSide=="BID", 'red', ifelse(tSide=="ASK", "green", "blue")))
-        py<- plot_ly(plotdelay()[plotdelay()$tPrice>0, ], x = Time, y = tPrice, mode = "markers", text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1,color=color, opacity= alpha() ))  %>%
-          layout(showlegend = FALSE, hovermode = "closest", legend = list(x = 1, y = 1),paper_bgcolor= 'rgba(249,249,263,.85)')
+        py<- plot_ly(plotDelayGreater(), x = Time, y = tPrice, mode = "markers", text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1,color=color, opacity= alpha(), line = list( width = .001) ))  %>%
+          layout(showlegend = FALSE, hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
         py<- layout(xaxis=xax, yaxis=yax)
         
         ###Imbalances 
         if (input$icbcNSDQ &  (is(try(ImbNSDQ(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbNSDQ(), x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1())) 
+          py<- add_trace(ImbNSDQ(), x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1())) 
           py<- layout(yaxis=list(range=c( y0(), y1())))
         } 
         if (input$icbcNYSE & (is(try(ImbNYSE(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbNYSE(), x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1()))  
+          py<- add_trace(ImbNYSE(), x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1()))  
           py<- layout(yaxis=list(range=c( y0(), y1())))
         } 
         if (input$icbcARCA & (is(try(ImbARCA(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbARCA(), x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "darkorchid",size=Size(), opacity= alpha1()))  
+          py<- add_trace(ImbARCA(), x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "BF3EFF",size=Size(), opacity= alpha1()))  
           py<- layout(yaxis=list(range=c( y0(), y1())))
         }
         ###Prev Close
-        if (input$prevclx) {py<- add_trace(PrevClose(), x=Time, y=tPrice, line=list(width=0.9, color="teal", dash="1"), marker=list(size=2), name="PrevCLX")}
+        if (input$prevclx) {py<- add_trace(PrevClose(), x=Time, y=tPrice, line=list(width=1, color="00CD66"), marker=list(size=2), name="PrevCLX", hoverinfo = "none")}
         
         ###Prints
         if (is(try(pp(), silent=T), "try-error")==FALSE)  {
           for (i in 1: nrow(pp())) {
-            py <- py %>% add_trace(x = c(pp()$Time[i],pp()$Time[i]), y = c(y0(), y1()), mode = "line",marker=list(size=1), line=list(dash="2", color="blue"), hoverinfo = "none", evaluate=TRUE) %>% 
+            py <- py %>% add_trace(x = c(pp()$Time[i],pp()$Time[i]), y = c(y0(), y1()), mode = "line",marker=list(size=1), line=list(dash="2", color="007FFF"), hoverinfo = "none", evaluate=TRUE) %>% 
               add_trace(x = c(pp()$Time[i]-Hline(), pp()$Time[i]+Hline()), y = c(pp()$tPrice[i], pp()$tPrice[i]), marker=list(size=1), mode = "line", line=list(dash="1", color="violet"), hoverinfo = "none", evaluate=TRUE)
           }
         }
@@ -431,7 +444,7 @@ shinyServer(function(input, output, session) {
             tt<- tt[order(tt$Time), ]
             py<- py %>%  add_trace( x= tt$Time, y=tt$price, mode="markers+lines",name=id[i], text=paste0("Tif:",tt$timeinforce, " Shares:", tt$Shares, "<br>Exchange:", tt$exchange),
                                     marker=list(symbol=tt$Shape, size=tt$Size, color=tt$color),
-                                    line=list(width=0.2, color=tt$color[1]), evaluate=TRUE)   
+                                    line=list(width=0.3, color=tt$color[1]), evaluate=TRUE)   
           }
         }
         ###News
@@ -445,12 +458,12 @@ shinyServer(function(input, output, session) {
                 bordercolor="steelblue",
                 borderwidth=1,
                 bgcolor= "#F0F8FF",
-                arrowcolor="navy",
+                arrowcolor="4F94CD",
                 font= list(color="darkblue", family="Droid Sans", size=Font()),
                 align="left",
                 opacity=0.8,
                 x =tt$Time,
-                y = y1(),
+                y = y1()-0.0015*y1(),
                 text = gsub("[$]","",tt$head),
                 xref = "x",
                 yref = "y",
@@ -458,7 +471,7 @@ shinyServer(function(input, output, session) {
                 arrowhead = 3,
                 ax = 20,
                 ay = -40)
-              py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(y0(), y1()), hoverinfo="x", marker=list(size=2, color="blue"), line=list(width=0.8, color="blue"), evaluate=TRUE)
+              py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(y0(), y1()-0.0015*y1()), hoverinfo="none", marker=list(size=2, color="7093DB"), line=list(width=0.8, color="7093DB"), evaluate=TRUE)
             }
             py<- py %>% layout(annotations=a)
           }
@@ -466,10 +479,10 @@ shinyServer(function(input, output, session) {
       }
       
       if (nrow(data.frame(event)) <1 & input$spread==TRUE) {
-        py<- plot_ly(subset(plotdelay(), tPrice>0), x = Time, y = tPrice, name="Price",mode = "markers", text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1, color=color, opacity= alpha() ))
+        py<- plot_ly(plotDelayGreater(), x = Time, y = tPrice, name="Price",mode = "markers", text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1, color=color, opacity= alpha(), line = list( width = .001) ))
         py<- add_trace(plotdelay(), x=Time, y=Bid_P, name = "Bid", line = l, hoverinfo = "none")
         py<- add_trace(plotdelay(), x=Time, y=Ask_P, name = "Ask", line = l, fill="tonexty", hoverinfo = "none") 
-        py<-  layout(showlegend = FALSE,hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
+        py<-  layout(showlegend = FALSE, hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
         py<- layout(xaxis=xax, yaxis=yax)
         
         #p2<- as.numeric(max(plotdelay()$tPrice))
@@ -479,24 +492,24 @@ shinyServer(function(input, output, session) {
         
         ###Imbalances  
         if (input$icbcNSDQ &  (is(try(ImbNSDQ(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbNSDQ(), x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1())) 
+          py<- add_trace(ImbNSDQ(), x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1())) 
           py<- layout(yaxis=list(range=c(p1-(p2-p1)*0.05, p2+(p2-p1)*0.05)))
         } 
         if (input$icbcNYSE & (is(try(ImbNYSE(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbNYSE(), x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1())) 
+          py<- add_trace(ImbNYSE(), x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1())) 
           py<- layout(yaxis=list(range=c(p1-(p2-p1)*0.05, p2+(p2-p1)*0.05)))
         } 
         if (input$icbcARCA & (is(try(ImbARCA(), silent=T), "try-error")==FALSE )) {
-          py<- add_trace(ImbARCA(), x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "darkorchid",size=Size(), opacity= alpha1())) 
+          py<- add_trace(ImbARCA(), x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "BF3EFF",size=Size(), opacity= alpha1())) 
           py<- layout(yaxis=list(range=c(p1-(p2-p1)*0.05, p2+(p2-p1)*0.05)))
         }
         ###Prev Close
-        if (input$prevclx) {py<- add_trace(PrevClose(), x=Time, y=tPrice, line=list(width=1, color="teal"), marker=list(size=2), name="PrevCLX")}
+        if (input$prevclx) {py<- add_trace(PrevClose(), x=Time, y=tPrice, line=list(width=1, color="00CD66"), marker=list(size=2), name="PrevCLX", hoverinfo = "none")}
         
         ###Prints
         if (is(try(pp(), silent=T), "try-error")==FALSE)  {
           for (i in 1: nrow(pp())) {
-            py <- py %>% add_trace(x = c(pp()$Time[i],pp()$Time[i]), y = c(y0(), y1()), mode = "line",marker=list(size=1), line=list(dash="2", color="blue"), hoverinfo = "none", evaluate=TRUE) %>% 
+            py <- py %>% add_trace(x = c(pp()$Time[i],pp()$Time[i]), y = c(y0(), y1()), mode = "line",marker=list(size=1), line=list(dash="2", color="007FFF"), hoverinfo = "none", evaluate=TRUE) %>% 
               add_trace(x = c(pp()$Time[i]-Hline(),pp()$Time[i]+Hline()), y = c(pp()$tPrice[i], pp()$tPrice[i]), marker=list(size=1), mode = "line", line=list(dash="1", color="violet"), hoverinfo = "none", evaluate=TRUE)
           }
         }
@@ -508,7 +521,7 @@ shinyServer(function(input, output, session) {
             tt<- tt[order(tt$Time), ]
             py<- py %>%  add_trace( x= tt$Time, y=tt$price, mode="markers+lines",name=id[i], text=paste0("Tif:",tt$timeinforce, " Shares:", tt$Shares, "<br>Exchange:", tt$exchange),
                                     marker=list(symbol=tt$Shape, size=tt$Size, color=tt$color),
-                                    line=list(width=0.2, color=tt$color[1]), evaluate=TRUE)   
+                                    line=list(width=0.3, color=tt$color[1]), evaluate=TRUE)   
           }
         }
         ###News
@@ -522,12 +535,12 @@ shinyServer(function(input, output, session) {
                 bordercolor="steelblue",
                 borderwidth=1,
                 bgcolor= "#F0F8FF",
-                arrowcolor="navy",
+                arrowcolor="4F94CD",
                 font= list(color="darkblue", family="Droid Sans", size=Font()),
                 align="left",
                 opacity= 0.8,
                 x =tt$Time,
-                y =y1(),
+                y = y1()-0.0015*y1(),
                 text = gsub("[$]","",tt$head),
                 xref = "x",
                 yref = "y",
@@ -535,7 +548,7 @@ shinyServer(function(input, output, session) {
                 arrowhead = 3,
                 ax = 20,
                 ay = -40)
-              py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(y0(), y1()), hoverinfo="x", marker=list(size=2, color="blue"), line=list(width=0.8, color="blue"), evaluate=TRUE)
+              py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(y0(), y1()-0.0015*y1()), hoverinfo="none", marker=list(size=2, color="7093DB"), line=list(width=0.8, color="7093DB"), evaluate=TRUE)
             }
             py<- py %>% layout(annotations=a)
           }
@@ -555,20 +568,20 @@ shinyServer(function(input, output, session) {
             data<-Minutes()}
         }
         data<- data[(data$Time>=t1 & data$Time<=t2) ,]
-        data$tSide<- as.character(data$tSide)
+        #data$tSide<- as.character(data$tSide)
         data$tShares1<- rescale(as.numeric(data$tShares1), c(4,14))
-        data$color<- as.character(data$color)
+        #data$color<- as.character(data$color)
         dataTprice<- data[data$tPrice >0 ,]
         
         if (nrow(data.frame(event)) >=1 & input$spread==FALSE)  {
-          py <- plot_ly(dataTprice, x= Time, y=tPrice, mode="markers", name="Price", text = paste0('Side:',tSide, " Shares:", tShares),  marker=list(size=tShares1,color=color, opacity = alpha() )) %>%
+          py <- plot_ly(dataTprice, x= Time, y=tPrice, mode="markers", name="Price", text = paste0('Side:',tSide, " Shares:", tShares),  marker=list(size=tShares1,color=color, opacity = alpha(), line = list( width = .001) )) %>%
             layout(showlegend = FALSE, hovermode = "closest", legend = list(x = 1, y = 1),paper_bgcolor= 'rgba(249,249,263,.85)')
           py<- layout(xaxis=xax, yaxis=yax)   
         }
         if (nrow(data.frame(event)) >=1 & input$spread==TRUE)  {
           y0<- min(data$tPrice[data$tPrice >0])
           y1<-max(data$tPrice[data$tPrice >0])
-          py <- plot_ly(dataTprice, x= Time, y=tPrice, mode="markers", name="Price",text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1,color=color, opacity= alpha() ) ) 
+          py <- plot_ly(dataTprice, x= Time, y=tPrice, mode="markers", name="Price",text = paste0('Side:',tSide, " Shares:", tShares), marker=list(size=tShares1,color=color, opacity= alpha(), line = list( width = .001) ) ) 
           py<- add_trace(data, x=Time, y=Bid_P, name = "Bid", line = l, hoverinfo = "none")
           py<- add_trace(data, x=Time, y=Ask_P, name = "Ask", line = l, fill="tonexty", hoverinfo = "none") 
           py<-  layout(showlegend = FALSE,hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
@@ -578,26 +591,26 @@ shinyServer(function(input, output, session) {
         if (is(try(pp(), silent=T), "try-error")==FALSE)  {
           temp<- pp()[(pp()$Time>=t1 & pp()$Time<=t2), ]
           for (i in 1: nrow(temp)) {
-            py <- py %>% add_trace(x = c(temp$Time[i], temp$Time[i]), y = c( min(dataTprice$Bid_P), max(dataTprice$Ask_P)  ), mode = "line",marker=list(size=1), line=list(dash="2", color="blue"), hoverinfo = "none", evaluate=TRUE) %>% 
+            py <- py %>% add_trace(x = c(temp$Time[i], temp$Time[i]), y = c( min(dataTprice$Bid_P), max(dataTprice$Ask_P)  ), mode = "line",marker=list(size=1), line=list(dash="2", color="007FFF"), hoverinfo = "none", evaluate=TRUE) %>% 
               add_trace(x = c(temp$Time[i]-Hline(), temp$Time[i]+Hline()), y = c(temp$tPrice[i], temp$tPrice[i]), marker=list(size=1), mode = "line", line=list(dash="1", color="violet"), hoverinfo = "none", evaluate=TRUE)
           }
         }
         ###Imbalances  
         if (input$icbcNSDQ) {
           tt<- subset(ImbNSDQ(), Time>=t1 & Time<=t2)
-          if (nrow(tt)>0) { py<- add_trace(tt, x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1()))
+          if (nrow(tt)>0) { py<- add_trace(tt, x=Time, y=iCBC, name="iCBC NSDQ", mode="markers", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1()))
           py<- layout(yaxis=list(range=c(min(dataTprice$Bid_P)-(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005,max(dataTprice$Ask_P)+(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005 )))
           }
         } 
         if (input$icbcNYSE) {
           tt<- subset(ImbNYSE(), Time>=t1 & Time<=t2)
-          if (nrow(tt)>0) {py<- add_trace(tt, x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "darkorchid", size=Size(), opacity= alpha1()))
+          if (nrow(tt)>0) {py<- add_trace(tt, x=Time, y=iCBC, mode="markers",name="iCBC NYSE", marker=list(symbol = 22, color= "BF3EFF", size=Size(), opacity= alpha1()))
           py<- layout(yaxis=list(range=c(min(dataTprice$Bid_P)-(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005,max(dataTprice$Ask_P)+(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005 )))
           }
         } 
         if (input$icbcARCA) {
           tt<- subset(ImbARCA(), Time>=t1 & Time<=t2)
-          if (nrow(tt)>0) {py<- add_trace(tt, x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "darkorchid",size=Size(), opacity= alpha1()))
+          if (nrow(tt)>0) {py<- add_trace(tt, x=Time, y=iCBC, mode="markers",name="iCBC ARCA", marker=list(symbol = 22, color= "BF3EFF",size=Size(), opacity= alpha1()))
           py<- layout(yaxis=list(range=c(min(dataTprice$Bid_P)-(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005,max(dataTprice$Ask_P)+(max(dataTprice$Ask_P)-min(dataTprice$Bid_P))*0.005 )))
           }  
         }
@@ -606,7 +619,7 @@ shinyServer(function(input, output, session) {
           #PrevClose<- data.frame(Time=c(data$Time[1], tail(data$Time,1)), tPrice=c(PrevClose()$tPrice, PrevClose()$tPrice))
           #PrevClose()['Time']<- c(data$Time[1], tail(data$Time,1))
           #py<- add_trace(PrevClose, x=Time, y=tPrice, line=list(width=1, color="teal"), marker=list(size=2), name="PrevCLX")
-          py<- add_trace(x=c(data$Time[1], tail(data$Time,1)), y=c(PrevClose()$tPrice, PrevClose()$tPrice), line=list(width=1, color="teal"), marker=list(size=2), name="PrevCLX")
+          py<- add_trace(x=c(data$Time[1], tail(data$Time,1)), y=c(PrevClose()$tPrice, PrevClose()$tPrice), line=list(width=1, color="teal"), marker=list(size=2), name="PrevCLX", hoverinfo = "none")
         }
         ###Orders
         if (nrow(dd)>0) {
@@ -635,11 +648,11 @@ shinyServer(function(input, output, session) {
                   bordercolor="steelblue",
                   borderwidth=1,
                   bgcolor= "#F0F8FF",
-                  arrowcolor="navy",
+                  arrowcolor="4F94CD",
                   font= list(color="darkblue", family="Droid Sans", size=Font()),
                   align="left",
                   x = tt$Time,
-                  y = mx,
+                  y = mx - 0.0015*mx,
                   text = gsub("[$]","",tt$head),
                   xref = "x",
                   yref = "y",
@@ -647,7 +660,7 @@ shinyServer(function(input, output, session) {
                   arrowhead = 3,
                   ax = 20,
                   ay = -40)
-                py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(mn, mx), hoverinfo="x", marker=list(size=2, color="blue"), line=list(width=0.8, color="blue"), evaluate=TRUE)
+                py<- py %>% add_trace( x = c(tt$Time, tt$Time), y = c(mn, mx - 0.0015*mx), hoverinfo = "none", marker=list(size=2, color="7093DB"), line=list(width=0.8, color="7093DB"), evaluate=TRUE)
               }
               py<- py %>% layout(annotations=a)
             }
@@ -657,6 +670,15 @@ shinyServer(function(input, output, session) {
       incProgress(1)
       setProgress(1)
     })
+    if (input$radio==2) {
+      py<- layout(py, xaxis=list(title = "",showgrid = F,
+                                 tickfont = list(color = fontcolor())),
+                  yaxis = list( gridcolor = "#8c8c8c",
+                                tickfont = list(color = fontcolor()), 
+                                titlefont = list(color = fontcolor())),
+                  paper_bgcolor = papercolor(),
+                  plot_bgcolor = plotcolor())
+    }
     py
   })
   
@@ -668,12 +690,12 @@ shinyServer(function(input, output, session) {
     )
     
     yax <- list(
-      # title = "",
+      title = "",
       tickfont = list(color = "darkblue")
     )
     
     py<- plot_ly(BottomPlot(), x = Time, y = MidPrice, source="subset", mode = "markers", marker=list( size=3.3 , opacity=0.9), name="") %>%
-      layout(showlegend = FALSE, hovermode = "closest", yaxis=list(type = "log"), legend = list(x = 1, y = 1),paper_bgcolor= 'rgba(249,249,263,.85)', dragmode = "select") %>%
+      layout(showlegend = FALSE, hovermode = "closest", yaxis=list(type = "log") ,paper_bgcolor= 'rgba(249,249,263,.85)', dragmode = "select") %>%
       layout(xaxis=xax, yaxis=yax)
     
     if (is(try(pp(), silent=T), "try-error")==FALSE)  {
@@ -681,7 +703,17 @@ shinyServer(function(input, output, session) {
         py <- py %>% add_trace(x = c(pp()$Time[i], pp()$Time[i]), y = c(y0(), y1()), mode = "line",marker=list(size=1), line=list(dash="2", color="steelblue"), evaluate=TRUE)
       }
     }
+    if (input$radio==2) { 
+      py<- layout(py, xaxis=list(title = "", showgrid = F,
+                                 tickfont = list(color = fontcolor())),
+                  yaxis = list( gridcolor = "#8c8c8c",
+                                tickfont = list(color = fontcolor()), 
+                                titlefont = list(color = fontcolor())),
+                  paper_bgcolor = papercolor(),
+                  plot_bgcolor = plotcolor())
+    }
     py
+    
   })
   
   
@@ -743,18 +775,33 @@ shinyServer(function(input, output, session) {
       py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
         # add_trace(x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
         add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares") %>%
-        layout(xaxis=xax, showlegend = FALSE,yaxis=ay1, yaxis2 = ay2) %>% layout(  margin = list(autosize=FALSE,r=50), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)') 
+        layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(  margin = list(autosize=FALSE,r=50), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)') 
     } else {
       py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
         add_trace(x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
         add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares") %>%
-        layout(xaxis=xax, showlegend = FALSE,yaxis=ay1, yaxis2 = ay2) %>% layout(  margin = list(autosize=FALSE,r=50), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
+        layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(margin = list(autosize=FALSE,r=50), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
     }
-    py   
+    if (input$radio==2) {
+      py<- layout(py, xaxis=list(title = "", showgrid = F,
+                                 tickfont = list(color = fontcolor())),
+                  yaxis = list( gridcolor = "#8c8c8c",
+                                tickfont = list(color = fontcolor()), 
+                                titlefont = list(color = fontcolor())),
+                  yaxis2 = list( gridcolor = "#8c8c8c",
+                                 tickfont = list(color = fontcolor()), 
+                                 titlefont = list(color = fontcolor())),
+                  paper_bgcolor = papercolor(),
+                  plot_bgcolor = plotcolor())
+    }
+    py
+    
+    
   })
   
   DataOut<-  reactive({
     event <- event_data("plotly_selected", source = "subset")
+    event<- event[event$y>0, ]
     if (nrow(data.frame(event))>1) {
       t1<- fastPOSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
       t2<- fastPOSIXct(as.character(as.POSIXct(max(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
@@ -766,9 +813,13 @@ shinyServer(function(input, output, session) {
     Out$tSide<- factor(Out$tSide)
     Out$tType<- factor(Out$tType)
     Out$Time=format(Out$Time, format="%H:%M:%OS")
-    return (Out) })
+    return (Out)
+  })
+  
   suppressWarnings(library(DT))
-  output$mytable <- renderDataTable (datatable(DataOut(), extensions = 'ColVis', options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip', colVis = list(exclude = c(0, 1), activate = 'mouseover')), filter = list(position = 'top', clear = FALSE)))
+  output$mytable <- renderDataTable (datatable(DataOut(), extensions = 'ColVis',
+                                               options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip', colVis = list(exclude = c(0, 1), activate = 'mouseover')),
+                                               filter = list(position = 'top', clear = FALSE)))
   #output$mytable <- renderDataTable ({plotdelay2()})
   output$downloadData <- downloadHandler(
     filename = function() {paste0(dateText(),"_Report",as.character(input$Strategy),".xlsx", sep="") },
@@ -779,17 +830,17 @@ shinyServer(function(input, output, session) {
   
   output$plotui <- renderUI({
     output$plot<- trendPlot
-    plotlyOutput("plot", width="100%", height = "100%") 
+    plotlyOutput("plot", width="100%", height = "auto") 
   })
   
   output$plotui2 <- renderUI({
     output$plot2<- trendPlot2
-    plotlyOutput("plot2", width="100%", height = 180) 
+    plotlyOutput("plot2", width="100%", height = 200) 
   })
   
   output$plotui3 <- renderUI({
     output$plot3<- ImbalPlot
-    plotlyOutput("plot3", width="100%", height = 180) 
+    plotlyOutput("plot3", width="100%", height = 200) 
   })
   
   inputChoices <- reactive({
@@ -801,13 +852,16 @@ shinyServer(function(input, output, session) {
   
   output$strat <- renderUI({selectInput('strat', 'Orders:',  choices=inputChoices(), selected = input$strat, width="100") })
   
-  
-  output$brush <- renderPrint({
-    d <- event_data("plotly_selected", source="subset")
-    k1= as.POSIXct(suppressWarnings(max(d$x)/1000), origin="1970-01-01", tz="GMT")- as.POSIXct(suppressWarnings(min(d$x)/1000), origin="1970-01-01", tz="GMT")
-    return(k1) 
+  output$name<- renderUI({
+    if (input$radio=="2") {eval(parse(text='includeCSS("slate.css")'))}
   })
+  
+  output$textcol<- renderUI({
+    if (input$radio=="2") {eval(parse(text= 'tags$style(type="text/css", "#from {background-color: #E3E3E3 }") '))}
+  })
+  
  }
 )
+
 
 
