@@ -1,6 +1,6 @@
 
 suppressWarnings(library(shinythemes))
-library(plotly)
+suppressWarnings(library(plotly))
 
 d<- Sys.Date()-1
 if (weekdays(Sys.Date())=="Monday") {d<- Sys.Date()-3} 
