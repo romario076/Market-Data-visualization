@@ -13,7 +13,6 @@ Sys.setenv(TZ='GMT')
 
 
 
-
 MarketData<- function(date, from, to, symbol, Level1, host) {
   
   From<- paste("'", from, "'", sep="")

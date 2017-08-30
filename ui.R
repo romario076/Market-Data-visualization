@@ -2,7 +2,6 @@
 suppressWarnings(library(shinythemes))
 suppressWarnings(library(plotly))
 
-
 getDate<- function() {
   d<- Sys.Date()-2
   if (weekdays(d)=="Sunday") {d<- d-2} 
