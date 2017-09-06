@@ -7,6 +7,7 @@ suppressWarnings( library(knitr))
 suppressWarnings( library(dplyr))
 suppressWarnings( library(xts))
 suppressWarnings( library(scales))
+suppressWarnings(library(DT))
 
 
 Sys.setenv(TZ='GMT')
@@ -14,29 +15,41 @@ Sys.setenv(TZ='GMT')
 
 
 MarketData<- function(date, from, to, symbol, Level1, host) {
-  
-  From<- paste("'", from, "'", sep="")
-  To<- paste("'", to, "'", sep="")
-  Symbol<- paste("'", symbol, "'", sep="")
-  if (date>="2016-06-06") {
-    if (Level1) {
-      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, tShares as tShares1, IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color, B_NAV, M_NAV, A_NAV from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, " and Reason !='NAV' ")    
+
+
+  if (Level1) {
+      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, 
+                  concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, 
+                  tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, tShares as tShares1, 
+                  IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color, B_NAV, M_NAV, A_NAV from ","`",as.symbol(date),"`", " where Symbol ='", symbol,"' 
+                  and Ask_P>0 and Bid_P>0 and Time>'",from,"' and Time<='",to, "' and Reason !='NAV' ")    
     } else {
-      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason,Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, tShares as tShares1, IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color, B_NAV, M_NAV, A_NAV from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, "and Reason !='NAV' and Reason != 'Level1' ")    
+      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, 
+                  concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares,
+                  tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange,  tShares as tShares1, 
+                  IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color, B_NAV, M_NAV, A_NAV  from ","`",as.symbol(date),"`", " where Symbol ='", symbol,"' 
+                  and Ask_P>0 and Bid_P>0 and Time>'",from,"' and Time<='",to, "'and Reason !='NAV' and Reason != 'Level1' ")    
     }
-  } else {
-    if (Level1) {
-      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange, tShares as tShares1, IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, " and Reason !='NAV' ")    
-    } else {
-      ss<- paste0("select concat(Timestamp, ' ',Time) as Time, concat(Timestamp, ' ',left(Time,11)) as Time1,  concat(Timestamp, ' ',left(Time,10)) as Time2, concat(Timestamp, ' ',left(Time,8)) as Time3,  concat(Timestamp, ' ',Left(Time, 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice,tType, iCBC,iMarket, iShares, iPaired, iExchange,  tShares as tShares1, IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color from ","`",as.symbol(date),"`", " where Symbol =", Symbol," and Ask_P>0 and Bid_P>0 and Time>",From," and Time<=",To, "and Reason !='NAV' and Reason != 'Level1' ")    
+
+  data <- tryCatch(
+    {
+      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host= host)
+      query <- dbSendQuery(mydb, ss)
+      temp <- fetch(query, n= -1)
+      dbClearResult(dbListResults(mydb)[[1]])
+      dbDisconnect(mydb)
+      temp
+    },
+    error=function(cond) {
+      return(data.frame())
+    },
+    warning=function(cond) {
+      return(data.frame())
+    },
+    finally={
     }
-  } 
-  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host= host)
-  #ss1<- paste0("select Time,tPrice, MidPrice, Bid_P, Ask_P, tShares, color, tSide, tShares, IF(tShares1>2,round(tShares1),2) as tShares1 from (select  concat(Timestamp, ' ',Time) as Time,(Bid_P+Ask_P)/2 as MidPrice, tPrice,  Bid_P, Ask_P, tShares, tSide, IF (tSide='BID','red', IF (tSide='ASK', 'green', 'blue')) as color, (tShares/(select max(tShares) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ")) as tShares1 from ","`",as.symbol(date),"`", "  where tType !='OPG' and tType !='CLX' and Symbol=", Symbol,"  and Ask_P>0 and Bid_P>0 and Time>",From,"and Time<=",To, ") as a")
-  query <- dbSendQuery(mydb, ss)
-  data <- fetch(query, n= -1)
-  dbClearResult(dbListResults(mydb)[[1]])
-  dbDisconnect(mydb)
+  )
+    
   if (nrow(data) !=0) {
     op<-options(digits.secs=6)
     data$Time<- fastPOSIXct(data$Time, required.components = 6L, tz = "GMT")
@@ -46,12 +59,59 @@ MarketData<- function(date, from, to, symbol, Level1, host) {
 }
 
 
+
+MarketDataFutures<- function(date, from, to, symbol, Level1) {
+  
+  
+  if (Level1) {
+    ss<- paste0("select concat(Timestamp, ' ',right(Time, 15)) as Time, concat(Timestamp, ' ',left(right(Time, 15),11)) as Time1,  concat(Timestamp, ' ',left(right(Time, 15),10)) as Time2, 
+                concat(Timestamp, ' ',left(right(Time, 15),8)) as Time3,  concat(Timestamp, ' ',Left(right(Time, 15), 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, 
+                tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice, tShares as tShares1, tType,
+                IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color from ","`",as.symbol(paste0(date, "CME")),"`", " where Symbol ='", symbol,"' 
+                and Ask_P>0 and Bid_P>0 and Time>'",paste0(date, " ", from),"' and Time<='",paste0(date, " ", to), "' and (Reason='Trade' or Reason='Level1')  ")    
+  } else {
+    ss<- paste0("select concat(Timestamp, ' ',right(Time, 15)) as Time, concat(Timestamp, ' ',left(right(Time, 15),11)) as Time1,  concat(Timestamp, ' ',left(right(Time, 15),10)) as Time2, 
+                concat(Timestamp, ' ',left(right(Time, 15),8)) as Time3,  concat(Timestamp, ' ',Left(right(Time, 15), 7), '0') as Time4, MsgSource, Reason, Bid_P, Ask_P, tShares, 
+                tSide, (Bid_P+Ask_P)/2 as MidPrice, tPrice, tShares as tShares1, tType,
+                IF (tSide='BID','FF4040', IF (tSide='ASK','7CCD7C', '66b3ff')) as color from ","`",as.symbol(paste0(date, "CME")),"`", " where Symbol ='", symbol,"' 
+                and Ask_P>0 and Bid_P>0 and Time>'",paste0(date, " ", from),"' and Time<='",paste0(date, " ", to), "' and Reason='Trade' ")   
+  }
+  
+  data <- tryCatch(
+    {
+      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='tick', host= "10.12.1.60")
+      query <- dbSendQuery(mydb, ss)
+      temp <- fetch(query, n= -1)
+      dbClearResult(dbListResults(mydb)[[1]])
+      dbDisconnect(mydb)
+      temp
+    },
+    error=function(cond) {
+      return(data.frame())
+    },
+    warning=function(cond) {
+      return(data.frame())
+    },
+    finally={
+    }
+  )
+  
+  if (nrow(data) !=0) {
+    op<-options(digits.secs=6)
+    data$Time<- fastPOSIXct(data$Time, required.components = 6L, tz = "GMT")
+  } else {data<- data.frame()}
+  
+  return(data)
+  }
+
+
+
 Printu<- function(date, from, to, symbol, host) {
-  From<- paste("'", from, "'", sep="")
-  To<- paste("'", to, "'", sep="")
-  Symbol<-paste("'", symbol, "'", sep="")
+
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host= host)
-  ss<- paste0("select concat(Timestamp, ' ', min(Time)) as Time, tType, tPrice, tVenue, IF (tvenue='NSDQ','007FFF', IF (tVenue='NYSE','00cc99', IF (tVenue='AXDP','7CCD7C', '660066'))) as color from ","`",as.symbol(date),"`", "  where Symbol=", Symbol," and (tType='OPG' or tType='CLX') and tPrice>0 and Time>",From," and Time<=",To, " group by tType, tVenue ")
+  ss<- paste0("select concat(Timestamp, ' ', min(Time)) as Time, tType, tPrice, tVenue, IF (tvenue='NSDQ','007FFF', 
+              IF (tVenue='NYSE','00cc99', IF (tVenue='AXDP','7CCD7C', '660066'))) as color from ","`",as.symbol(date),"`", "  
+              where Symbol='",symbol,"' and (tType='OPG' or tType='CLX') and tPrice>0 and Time>'",from,"' and Time<='",to, "' group by tType, tVenue ")
   query <- dbSendQuery(mydb, ss)
   data <- fetch(query, n= -1)
   dbClearResult(dbListResults(mydb)[[1]])
@@ -64,13 +124,11 @@ Printu<- function(date, from, to, symbol, host) {
 
 
 PrevCLX<- function(date, symbol) {
-  Date<- paste("'", date, "'", sep="")
-  Symbol<-paste("'", symbol, "'", sep="")
-  
+
   date1<- as.Date(date)-1
   data<- data.frame()
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='stock', host='192.168.31.21')
-  ss<- paste0("select distinct Exchange from Stock where Timestamp=",Date," and Symbol=",Symbol,"")
+  ss<- paste0("select distinct Exchange from Stock where Timestamp'",date,"' and Symbol='",symbol,"'")
   query <- dbSendQuery(mydb, ss)
   ex <- fetch(query, n= -1)[1,1]
   dbClearResult(dbListResults(mydb)[[1]])
@@ -126,13 +184,10 @@ PrevCLX<- function(date, symbol) {
 
 
 PrevCLX2<- function(date, symbol) {
-  Date<- paste("'", date, "'", sep="")
-  Symbol<-paste("'", symbol, "'", sep="")
   
-  date1<- as.Date(date)-1
   data<- data.frame()
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='stock', host="192.168.31.21")
-  ss<- paste0("select Price as tPrice from Stock where Timestamp=",Date," and Symbol=",Symbol," and Price>0 order by Updated")
+  ss<- paste0("select Price as tPrice from Stock where Timestamp='",date,"' and Symbol='",symbol,"' and Price>0 order by Updated")
   query <- dbSendQuery(mydb, ss)
   data <- fetch(query, n= -1)
   dbClearResult(dbListResults(mydb)[[1]])
@@ -143,13 +198,27 @@ PrevCLX2<- function(date, symbol) {
 }
 
 
+PrevCLXFutures<- function(date, symbol) {
+  
+  mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='tick', host= "10.12.1.60")
+  query <- dbSendQuery(mydb, "Show Tables")
+  temp <- fetch(query, n= -1)
+
+  dates<- strtrim(temp$Tables_in_tick, 10)
+  yCloseDate<- tail(dates[dates<date],1)
+
+  query<- dbSendQuery(mydb, paste0("Select  right(Time, 15) as Time, tPrice as tPrice from `",yCloseDate, "CME","` where 
+                                   Symbol='",symbol,"' and Reason='Trade' and Time>='",yCloseDate, " ", "16:00:00","' and tPrice>0 limit 1  "))
+  yClose <- fetch(query, n= -1)
+  dbClearResult(dbListResults(mydb)[[1]])
+  dbDisconnect(mydb)  
+  
+  return(yClose)
+}
+
+
 
 Orders<- function(date, from, to, symbol) {
-  
-  Date<- paste("'",date, "'", sep="")
-  Symbol<- paste("'", symbol, "'", sep="") 
-  From<- paste("'", from, "'", sep="")
-  To<- paste("'", to, "'", sep="")
   
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.21')
   select2<- paste0('select concat(`date`," ", `timestamp`) as Time, `strategy`, `messagetype`, `exchange`, `orderid`,`side`, `price`, `timeinforce`, substring_index(`type`,"|",-1) as type,`sharesexecuted` as Shares,
@@ -161,7 +230,7 @@ Orders<- function(date, from, to, symbol) {
                    else "pink"
                    END color
                    from History
-                   where symbol=',Symbol,' and date=',Date,' and (messagetype="trader_new_order" or messagetype="trader_order_executed" or messagetype="trader_modify_order")  and timestamp>=',From,' and timestamp<= ',To,'')
+                   where symbol="',symbol,'" and date="',date,'" and (messagetype="trader_new_order" or messagetype="trader_order_executed" or messagetype="trader_modify_order")  and timestamp>="',from,'" and timestamp<= "',to,'"')
   query <- dbSendQuery(mydb, select2)
   data <- fetch(query, n= -1)
   dbClearResult(dbListResults(mydb)[[1]])
@@ -201,14 +270,11 @@ Orders<- function(date, from, to, symbol) {
 
 
 OrderTable<- function(date, from, to, symbol, orderid) {
-  Date<- paste("'",date, "'", sep="")
-  Symbol<- paste("'", symbol, "'", sep="")
-  Orderid<- paste(orderid, collapse = ",")
   
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.21')
   select2<- paste0('select timestamp as Time, strategy, messagetype, exchange, orderid, destination, side, price, type, sharesexecuted, timeinforce
                    from History
-                   where symbol=',Symbol,' and date=',Date,' and orderid in (',Orderid,')')
+                   where symbol="',symbol,'" and date="',date,'" and orderid in ("',orderid,'")')
   query <- dbSendQuery(mydb, select2)
   data <- fetch(query, n= -1)
   dbClearResult(dbListResults(mydb)[[1]])
@@ -221,11 +287,6 @@ News<- function(date, from , to, symbol) {
   
   insert <- function(v,e,pos){
     return(c(v[1:(pos-1)],e,v[(pos):length(v)])) }
-  
-  #date= "2016-07-11"
-  #symbol= "AA"
-  #from= "16:00:00"
-  #to= "16:05:00"
   
   Date<- paste("'", date, "'", sep="")
   Symbol1<- paste("'%", symbol, "%'", sep="") 
@@ -273,12 +334,10 @@ News<- function(date, from , to, symbol) {
 
 Nav<- function(date, from, to, symbol, scale, host) {
   
-  Symbol<- paste("'", symbol, "'", sep="") 
-  From<- paste("'", from, "'", sep="")
-  To<- paste("'", to, "'", sep="")
-  
   mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host= host)
-  select2<- paste0('select * from( select concat(Timestamp, " ", left(Time,',as.symbol(scale),')) as Time, MsgSource, Reason, Bid_P, Ask_P, tShares, tSide, tType, tPrice, iCBC, iMarket, iShares, iPaired, iExchange, B_NAV, M_NAV, A_NAV  from ',"`",as.symbol(date),"`",' where Symbol=',Symbol,' and Time>=',From,' and Time<=',To,' and Reason="NAV") as a group by Time ')
+  select2<- paste0('select * from( select concat(Timestamp, " ", left(Time,',as.symbol(scale),')) as Time, MsgSource, Reason, Bid_P, Ask_P, 
+                   tShares, tSide, tType, tPrice, iCBC, iMarket, iShares, iPaired, iExchange, B_NAV, M_NAV, A_NAV  from ',"`",as.symbol(date),"`",'
+                   where Symbol="',symbol,'" and Time>="',from,'" and Time<="',to,'" and Reason="NAV") as a group by Time ')
   #query <- dbSendQuery(mydb, select2)
   if (is(try(  query <- dbSendQuery(mydb, select2), silent=T), "try-error") ) {
     nav<- data.frame()
@@ -292,11 +351,64 @@ Nav<- function(date, from, to, symbol, scale, host) {
   return(nav)  
 }  
 
+checkErrors<-  function(data) {
+  out <- tryCatch(
+    {
+      mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.21')
+      dbDisconnect(mydb)
+    },
+    error=function(cond) {
+      return(FALSE)
+    },
+    warning=function(cond) {
+      return(NULL)
+    },
+    finally={
+    }
+  )  
+  if (out==FALSE) {
+    showModal(modalDialog(
+      title = "Warning message",
+      "Failed to connect to database: Error: Can't connect to MySQL server on '192.168.31.21'",
+      size= "m",
+      easyClose = TRUE
+    ))
+    #stop()
+    return(TRUE)
+  } else {
+    if (is(try(data, silent=T), "try-error"))  { 
+      mess1<- ' Message: Empty data. Choose another day :-) '
+      showModal(modalDialog(
+        title = "Warning message",
+        " Message: Empty data. Choose another day :-) ",
+        size= "m",
+        easyClose = TRUE
+      ))
+      #stop()
+      return(TRUE)
+    } else {
+      if (nrow(data)<1) {
+        showModal(modalDialog(
+          title = "Warning message",
+          " Message: Empty data. Choose another day :-) ",
+          size= "m",
+          easyClose = TRUE
+        ))
+        #stop()
+        return(TRUE)
+      } 
+    }
+  } 
+  return(FALSE)
+}
 
 ###Shiny server
 shinyServer(function(input, output, session) {
-  
-  dateText<- renderText(as.character(input$date))
+
+  dateText<- renderText({
+    input$go
+    isolate({as.character(input$date)})
+      })
   
   ### Define selected host
   host<- reactive({
@@ -307,95 +419,108 @@ shinyServer(function(input, output, session) {
     }
     return(host)
   })
-  
-  data<- reactive({ MarketData(date =dateText(), from=input$from, to=input$to, symbol =  input$text, Level1= input$level1, host= host() )})
-  
-  ###For Navs data, Navs are not avaible to 2016-06-06
-  ColumnsForDiffDays<- reactive({
-    if (dateText()>= "2016-06-06") {
-      columns<- c( "B_NAV", "M_NAV", "A_NAV")
-    } else {
-      columns<- c()
-    }
-    return(columns)
+
+  observeEvent(input$help, {
+    toggle("text_help")
   })
+    
   
-  
-  
-  #data1<- reactive({ data()[ ,union(c("Time", "Time1", "Time2", "Time3", "MsgSource", "Reason", "Bid_P", "Ask_P", 
-  #                                    "tShares","tShares1", "tSide","tType" ,"MidPrice", "tPrice", "iCBC", "iMarket", "iShares", 
-  #                                    "iPaired", "iExchange", "color"), ColumnsForDiffDays() )  ] })
-  
-  data1<- reactive({
-    if (input$level1) {
-      data()[(data()$Reason=="Trade")|(data()$Reason=="Level1"),
-             union(c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1", "tSide","tType" ,"MidPrice", "tPrice",
-                     "iCBC", "iMarket", "iShares", "iPaired", "iExchange", "color"), ColumnsForDiffDays() )  ]
-    } else {
-      data()[(data()$Reason=="Trade"), union(c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1", "tSide", "tType",
-                                               "MidPrice", "tPrice","iCBC", "iMarket", "iShares", "iPaired", "iExchange", "color"), ColumnsForDiffDays() )  ]
-    }
-  })
-  
-  delta<-  reactive({ as.numeric(tail(data1()$Time,1)-data1()$Time[1], units="secs") })
+  data<- eventReactive(input$go, {
+    
+    withProgress( message = 'Data downloading', value = 0.2, {
+      if (input$futures) {
+        dd<-MarketDataFutures(date=dateText(), from=input$from, to=input$to, symbol=input$text, Level1=input$level1) 
+      } else {
+        dd<- MarketData(date=dateText(), from=input$from, to=input$to, symbol=input$text, Level1=input$level1, host=host()) 
+      }
+      incProgress(1)
+      setProgress(1)
+    })
+    return(dd)
+    })
   
 
-  output$mess<- renderUI({
-    
-    out <- tryCatch(
-      {
-        mydb = dbConnect(MySQL(), user='roma', password='2bn4aYjV8bz5OY', dbname='reports', host='192.168.31.21')
-        dbDisconnect(mydb)
-      },
-      error=function(cond) {
-        return(FALSE)
-      },
-      warning=function(cond) {
-        return(NULL)
-      },
-      finally={
-      }
-    )  
-    
-    if (out==FALSE) {
-      showModal(modalDialog(
-        title = "Warning message",
-        "Failed to connect to database: Error: Can't connect to MySQL server on '192.168.31.21'",
-        size= "m",
-        easyClose = TRUE
-      ))
-      stop()
-    } else {
-      if (is(try(data1(), silent=T), "try-error"))  { 
-        mess1<- ' Message: Empty data. Choose another day :-) '
-        showModal(modalDialog(
-          title = "Warning message",
-          " Message: Empty data. Choose another day :-) ",
-          size= "m",
-          easyClose = TRUE
-        ))
-      } else {
-        if (nrow(data1())<1) {
-          showModal(modalDialog(
-            title = "Warning message",
-            " Message: Empty data. Choose another day :-) ",
-            size= "m",
-            easyClose = TRUE
-          ))
+  data1<- reactive({ 
+    input$go
+    isolate({
+        if (nrow(data())>1) {
+          if (input$futures) {
+                if (input$level1) {
+                  data1<- data()[(data()$Reason=="Trade")|(data()$Reason=="Level1"),
+                                  c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1", "tSide",
+                                    "MidPrice", "tPrice", "tType", "color")  ]
+                } else {
+                  data1<- data()[(data()$Reason=="Trade"), 
+                                  c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1",
+                                    "tSide", "MidPrice", "tPrice", "tType", "color")  ]
+                }
+            } else {
+                if (input$level1) {
+                  data1<- data()[(data()$Reason=="Trade")|(data()$Reason=="Level1"),
+                                  c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1", "tSide","tType" ,"MidPrice",
+                                    "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange", "color") ]
+                } else {
+                  data1<- data()[(data()$Reason=="Trade"), 
+                                  c("Time", "Time1", "Time2", "Time3", "Time4", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares","tShares1", "tSide", "tType","MidPrice", 
+                                    "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange", "color") ]
+                }
+            }
+
+        } else {
+          data1<- data.frame()
         }
-      }
-    }  
+      message(paste0("Data1 shape: ", nrow(data1)))
+      isErrors<- checkErrors(data=data1)
+      message(paste0("Errors: ", isErrors))
+
+      return(data1) 
+    })
   })
   
   
+###Disable or enable inputs depending to DB
+  observeEvent(input$futures,
+               if (input$futures) {
+                 disable("strat")
+                 disable("news")
+                 disable("icbc")
+                 disable("nav")
+                 #disable("prevclx")
+                 disable("colorEx")
+                 disable("host")
+               } else {
+                 enable("strat")
+                 enable("news")
+                 enable("icbc")
+                 enable("nav")
+                 #enable("prevclx")
+                 enable("colorEx")
+                 enable("host")
+               })
+
+
+  delta<-  reactive({ as.numeric(max(data1()$Time) - min(data1()$Time), units="secs") })
+  
   f<- reactive({ f<-as.xts(data1(), order.by=data1()[, 1], frequency=NULL)
-  return (f)})
+          return (f)})
   
   Seconds<-  reactive({
-    
-    ep <- endpoints(f(),'seconds')
-    data<- as.data.frame(period.apply(f(), INDEX=ep, FUN=function(x) tail(x, 1)))
-    row.names(data)<- NULL
+    if (input$level1) {
+      temp<- f()[f()$Reason=="Level1", ]
+      ep1 <- endpoints(temp,'seconds')
+      data1<- as.data.frame(period.apply(temp, INDEX=ep1, FUN=function(x) tail(x, 1)))
+      row.names(data1)<- NULL
+      
+      temp2<- f()[f()$Reason!="Level1"]
+      ep2 <- endpoints(temp2,'seconds')
+      data2<- as.data.frame(period.apply(temp2, INDEX=ep2, FUN=function(x) tail(x, 1)))
+      row.names(data2)<- NULL
+      data<- rbind(data1, data2)
+    } else {
+      ep <- endpoints(f(),'seconds')
+      data<- as.data.frame(period.apply(f(), INDEX=ep, FUN=function(x) tail(x, 1)))
+      row.names(data)<- NULL 
+    }
     data$Time<- fastPOSIXct(data$Time, required.components = 6L, tz = "GMT")
     data$tPrice<- as.numeric(as.character(data$tPrice))
     data$Ask_P<- as.numeric(as.character(data$Ask_P))
@@ -403,13 +528,27 @@ shinyServer(function(input, output, session) {
     data$tShares1<- as.character(data$tShares1)
     data$tType<- as.character(data$tType)
     data$color<- as.character(data$color)
+    data<- data[order(data$Time),]
     return(data)})
   
   Seconds10<- reactive({
     if (delta()> 1800) {
-      ep <- endpoints(f(),'seconds', k=10)
-      data<- as.data.frame(period.apply(f(), INDEX=ep, FUN=function(x) tail(x, 1)))
-      row.names(data)<- NULL
+      if (input$level1) {
+        temp<- f()[f()$Reason=="Level1", ]
+        ep1 <- endpoints(temp,'seconds',  k=10)
+        data1<- as.data.frame(period.apply(temp, INDEX=ep1, FUN=function(x) tail(x, 1)))
+        row.names(data1)<- NULL
+        
+        temp2<- f()[f()$Reason!="Level1"]
+        ep2 <- endpoints(temp2,'seconds')
+        data2<- as.data.frame(period.apply(temp2, INDEX=ep2, FUN=function(x) tail(x, 1)))
+        row.names(data2)<- NULL
+        data<- rbind(data1, data2)
+      } else {
+        ep <- endpoints(f(),'seconds',  k=10)
+        data<- as.data.frame(period.apply(f(), INDEX=ep, FUN=function(x) tail(x, 1)))
+        row.names(data)<- NULL 
+      }
       data$Time<- fastPOSIXct(data$Time, required.components = 6L, tz = "GMT")
       data$tPrice<- as.numeric(as.character(data$tPrice))
       data$Ask_P<- as.numeric(as.character(data$Ask_P))
@@ -417,14 +556,28 @@ shinyServer(function(input, output, session) {
       data$tShares1<- as.character(data$tShares1)
       data$tType<- as.character(data$tType)
       data$color<- as.character(data$color)
+      data<- data[order(data$Time),]
     } else {data<- c()}
     return(data)})
   
   Minutes<- reactive({
     if (delta()> 1800) {
-      ep <- endpoints(f(),'minutes')
-      data<- as.data.frame(period.apply(f()[,], INDEX=ep, FUN=function(x) tail(x, 1)))
-      row.names(data)<- NULL
+      if (input$level1) {
+        temp<- f()[f()$Reason=="Level1", ]
+        ep1 <- endpoints(temp, 'minutes')
+        data1<- as.data.frame(period.apply(temp, INDEX=ep1, FUN=function(x) tail(x, 1)))
+        row.names(data1)<- NULL
+        
+        temp2<- f()[f()$Reason!="Level1"]
+        ep2 <- endpoints(temp2, 'minutes')
+        data2<- as.data.frame(period.apply(temp2, INDEX=ep2, FUN=function(x) tail(x, 1)))
+        row.names(data2)<- NULL
+        data<- rbind(data1, data2)
+      } else {
+        ep <- endpoints(f(),'seconds',  k=10)
+        data<- as.data.frame(period.apply(f(), INDEX=ep, FUN=function(x) tail(x, 1)))
+        row.names(data)<- NULL 
+      }
       data$Time<- fastPOSIXct(data$Time, required.components = 6L, tz = "GMT")
       data$tPrice<- as.numeric(as.character(data$tPrice))
       data$Ask_P<- as.numeric(as.character(data$Ask_P))
@@ -432,25 +585,34 @@ shinyServer(function(input, output, session) {
       data$tShares1<- as.character(data$tShares1)
       data$tType<- as.character(data$tType)
       data$color<- as.character(data$color)
+      data<- data[order(data$Time),]
     } else {data<- c()}
     return(data)})
   
   
   
   plotdelay<- reactive({
-    tDiff<-  delta()
-    if (tDiff<= 1800) {data<-data1()} else {
-      if (tDiff>1800 & tDiff<3*3600) {data<-Seconds()}
-      if (tDiff>3*3600 & tDiff<6*(3600)) {data<-Seconds10()}
-      if (tDiff>6*3600) {data<-Minutes()}
+    if (nrow(data1())>0) {
+      tDiff<-  delta()
+      if (tDiff<= 1800) {data<-data1()} else {
+        if (tDiff>1800 & tDiff<3*3600) {data<-Seconds()}
+        if (tDiff>3*3600 & tDiff<6*(3600)) {data<-Seconds10()}
+        if (tDiff>6*3600) {data<-Minutes()}
+      }
+      data$tShares1<- as.numeric(data$tShares1)
+      data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20)))
+      data$tShares1[(data$tSide=="BID") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="BID") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20)))
+      data$tShares1[(data$tSide=="BOTH") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="BOTH") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20))) 
+      if (!input$futures) {
+        if (sum(data$tShares1[(data$tType=="OPG") | (data$tType=="CLX")])>0) {
+          data$tShares1[(data$tType=="OPG") | (data$tType=="CLX")]<- as.integer(rescale(as.numeric(data$tShares1[(data$tType=="OPG") | (data$tType=="CLX")]), c(7,24)))
+          data$color[(data$tType=="OPG") | (data$tType=="CLX")]<- "#ffb84d" 
+        }
+      }
+    } else {
+      data<- data.frame()
     }
-    data$tShares1<- as.numeric(data$tShares1)
-    data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20)))
-    data$tShares1[(data$tSide=="BID") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="BID") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20)))
-    data$tShares1[(data$tSide=="BOTH") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="BOTH") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20))) 
-    
-    data$tShares1[(data$tType=="OPG") | (data$tType=="CLX")]<- as.integer(rescale(as.numeric(data$tShares1[(data$tType=="OPG") | (data$tType=="CLX")]), c(7,24)))
-    data$color[(data$tType=="OPG") | (data$tType=="CLX")]<- "#ffb84d"
+
     return(data)
   })
   
@@ -497,12 +659,16 @@ shinyServer(function(input, output, session) {
   
   
   BottomPlot<- reactive({
-    tDiff<- delta()
-    if (tDiff<2*3600) {data<-Seconds()} else {
-      if (tDiff>=2*3600 & tDiff<5*3600) {data<-Seconds10()}
-      if (tDiff>=5*3600) {data<-Minutes()} 
+    if (nrow(data1())>0) {
+      tDiff<- delta()
+      if (tDiff<2*3600) {data<-Seconds()} else {
+        if (tDiff>=2*3600 & tDiff<5*3600) {data<-Seconds10()}
+        if (tDiff>=5*3600) {data<-Minutes()} 
+      }
+      data<- data[ ,c("Time", "MidPrice")]
+    } else {
+      data<- data.frame()
     }
-    data<- data[ ,c("Time", "MidPrice")]
     return(data)
   })
   
@@ -520,22 +686,37 @@ shinyServer(function(input, output, session) {
   
   plotDelayGreater<- reactive({
     dd<- plotdelay()
-    #dd$tPrice[dd$tPrice==0]<- NA
-    dd<- dd[dd$tPrice>0, ]
-    if (input$OverLap) {dd$tPrice1<- jitter(dd$tPrice)}
+    if (nrow(dd)>0) {
+      dd<- dd[dd$tPrice>0, ]
+      if (input$OverLap) {dd$tPrice1<- jitter(dd$tPrice)} 
+    }
     return(dd)
   })
   
-  y0<- reactive({min( plotDelayGreater()$tPrice ) })
+  y0<- reactive({min(plotDelayGreater()$tPrice) })
   y1<- reactive({max(plotdelay()$tPrice) })
   
-  pp<- reactive({ Printu(date =dateText(), from=input$from, to=input$to, symbol= input$text, host= host() ) })
-  Order<- reactive({ Orders(date=as.character(dateText()), from=input$from, to=input$to, symbol= input$text) })
-  Newsdata<- reactive({ if (input$news & nrow(data())>0)  {News(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text)} else {c()} })
+  pp<- reactive({
+    Printu(date =dateText(), from=input$from, to=input$to, symbol= input$text, host= host() ) 
+    })
   
-  NavData1<- reactive({ if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text, host= host(), scale= 12)} else {c()} })
-  NavData2<- reactive({ if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text, host= host(), scale= 9)} else {c()} })
-  NavData3<- reactive({ if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text,  host= host(), scale= 8)} else {c()}})
+  Order<- reactive({
+    Orders(date=as.character(dateText()), from=input$from, to=input$to, symbol= input$text) 
+    })
+  
+  Newsdata<- reactive({
+    if (input$news & nrow(data())>0)  {News(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text)} else {c()} 
+    })
+  
+  NavData1<- reactive({
+    if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text, host= host(), scale= 12)} else {c()}
+    })
+  NavData2<- reactive({
+    if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text, host= host(), scale= 9)} else {c()}
+    })
+  NavData3<- reactive({
+    if (length(input$nav)>0) {Nav(date=as.character(dateText()), from=input$from, to=input$to, symbol=input$text,  host= host(), scale= 8)} else {c()}
+    })
   Navdata<- reactive({
     if (length(input$nav)>0) {
       tDiff<- delta()
@@ -550,10 +731,14 @@ shinyServer(function(input, output, session) {
   
   PrevClose<- reactive({
     if (input$prevclx) {
-      dat<- PrevCLX2(date=as.character(dateText()), symbol=input$text)
-      data<- data.frame(Time=c(plotdelay()$Time[1], tail(plotdelay()$Time,1)), tPrice=c(dat$tPrice, dat$tPrice))
+      if (input$futures) {
+        dat<- PrevCLXFutures(date=as.character(dateText()), symbol=input$text)
+        data<- data.frame(Time=c(plotdelay()$Time[1], tail(plotdelay()$Time,1)), tPrice=c(dat$tPrice, dat$tPrice))
+      } else {
+        dat<- PrevCLX2(date=as.character(dateText()), symbol=input$text)
+        data<- data.frame(Time=c(plotdelay()$Time[1], tail(plotdelay()$Time,1)), tPrice=c(dat$tPrice, dat$tPrice))
+      }
     } else {data<-c()}
-    
     return(data)
     })
   
@@ -572,26 +757,31 @@ shinyServer(function(input, output, session) {
   
   ###Top plot
   trendPlot <- renderPlotly({
-    withProgress( message = 'Top Chart', value = 0.1, {
+
+    event<- event_data("plotly_selected", source = "subset")
+    event<- event[event$y>0, ]
+    
+    input$go
+    isolate({
+      if (nrow(plotDelayGreater())>0) {
+      
       p2<- as.numeric(y1())
       p1<- as.numeric(y0())
       tDiff<- delta()
-      
+      fontcolor<- "darkblue"
+        
       xax <- list(
-        title = "",
-        tickfont = list(color = "darkblue")
-      )
+          title = "",
+          tickfont = list(color = "darkblue")
+        )
       yax <- list(
-        title = "",
-        tickfont = list(color = "darkblue")
-      )
-      
+          title = "",
+          tickfont = list(color = "darkblue")
+        )
+        
       navOpacity=0.8
       navSize=5
-      
-      event<- event_data("plotly_selected", source = "subset")
-      event<- event[event$y>0, ]
-      
+        
       if (input$radio==1) {
         l<- list( color = toRGB("grey90", alpha = 0.1),
                   fillcolor = toRGB("grey90", alpha = 0.1),
@@ -623,8 +813,9 @@ shinyServer(function(input, output, session) {
         hoverinfo= "x+y+text"
       }
       
+      withProgress( message = 'Top Chart', value = 0.4, {
+        
       if (nrow(data.frame(event)) <1 & input$spread==FALSE) {
-        #list(size=Size(),color=ifelse(tSide=="BID", 'red', ifelse(tSide=="ASK", "green", "blue")))
         py<- plot_ly(plotDelayGreater(), x = Time, y = eval(parse(text=y)), mode = "markers", text = eval(parse(text= t)), hoverinfo=eval(hoverinfo), 
                      marker=list(size=tShares1, color=eval(parse(text=colorDesc)), opacity= alpha(), line = list( width = .001) ))  %>%
           layout(showlegend = FALSE, hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
@@ -750,7 +941,7 @@ shinyServer(function(input, output, session) {
         py<- add_trace(plotdelay(), x=Time, y=Bid_P, name = "Bid", line = l, hoverinfo = "none")
         py<- add_trace(plotdelay(), x=Time, y=Ask_P, name = "Ask", line = l, fill="tonexty", hoverinfo = "none") 
         py<-  layout(showlegend = FALSE, hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
-        py<- layout(xaxis=xax, yaxis=yax)
+        py<- layout(xaxis=xax, yaxis=yax, yaxis2=yax)
         
         
         ###Imbalances  
@@ -833,8 +1024,6 @@ shinyServer(function(input, output, session) {
         
         
         #### Volume Chart
-
-        
         if (tDiff<=30) {x="Time1"}
         if ((tDiff>30) & (tDiff<5*60)) {x="Time2"}
         if ((tDiff>=5*60) & (tDiff<30*60)) {x="Time3"}
@@ -845,7 +1034,8 @@ shinyServer(function(input, output, session) {
         VolumeAggregate<- eval(parse(text=paste0("aggregate(.~",x,", data=VolumeAggregate, FUN=sum)")))
         VolumeAggregate[ ,x]<- fastPOSIXct(VolumeAggregate[ ,x], required.components = 6L, tz = "GMT")
         
-        py <- add_trace(data= VolumeAggregate, x =eval(parse(text= x)), y = tShares, type = "bar", marker = list(color = "steelblue"), yaxis="y2", hoverinfo="none") %>% layout(paper_bgcolor= 'rgba(249,249,263,.85)')
+        py <- add_trace(data= VolumeAggregate, x =eval(parse(text= x)), y = tShares, type = "bar", marker = list(color = "steelblue"), yaxis="y2", hoverinfo="none") %>% 
+          layout(paper_bgcolor= 'rgba(249,249,263,.85)')
         
         py<- layout(
           yaxis = list(
@@ -876,8 +1066,6 @@ shinyServer(function(input, output, session) {
         }
         
         data<- data[(data$Time>=t1 & data$Time<=t2) ,]
-        #data$tShares1<- rescale(as.numeric(data$tShares1), c(3,17))
-        #dataTprice<- data[data$tPrice >0 ,]
         
         data$tShares1<- as.numeric(data$tShares1)
         data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")]<- as.integer(rescale(as.numeric(sqrt(data$tShares1[(data$tSide=="ASK") & (data$tType != "OPG") & (data$tType != "CLX")])), c(1,20)))
@@ -1051,99 +1239,109 @@ shinyServer(function(input, output, session) {
       setProgress(1)
     })
     py
+    }
+   })
   })
   
   
   ###Imbalance plot
-  ImbalPlot <- renderPlotly({ 
-    withProgress(message = 'Imbalance Chart', value = 0.1, {
-      ay2 <- list(
-        zeroline = FALSE,
-        tickfont = list(color = "green"),
-        overlaying = "y",
-        side = "right"
-      )
-      
-      ay1<- list (
-        zeroline = FALSE,
-        tickfont = list(color = "darkblue"),
-        title=""
-      )
-      xax <- list(
-        title="",
-        zeroline = FALSE,
-        tickfont = list(color = "darkblue")
-      )
-      if (length(input$icbc)>0) {
-        event <- event_data("plotly_selected", source = "subset")
-        tt<- data.frame()
-        tt1<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
-        tt2<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
-        tt3<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
-        
-        if ("Q" %in% input$icbc) {
-          tt1<- ImbNSDQ()[,c("Time", "iMarket" ,"iPaired", "iShares")]
-        } 
-        if ("Y" %in% input$icbc) {
-          tt2<- ImbNYSE()[,c("Time", "iMarket", "iPaired", "iShares")]
-        } 
-        if ("A" %in% input$icbc) {
-          tt3<- ImbARCA()[,c("Time", "iMarket", "iPaired", "iShares")]
-        }
-        
-        if (nrow(data.frame(event)) >0 ) {
-          t1<- as.POSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  "%Y-%m-%d %H:%M:%S", tz ="GMT")-1
-          t2<- as.POSIXct(as.character(as.POSIXct(max(event$x)/1000, origin="1970-01-01", tz="EET")),  "%Y-%m-%d %H:%M:%S", tz ="GMT")+1
-          if ("Q" %in% input$icbc) {
-            tt1<- subset(ImbNSDQ(), Time>=t1 & Time<=t2, select=c("Time", "iMarket","iPaired", "iShares"))
-          } 
-          if ("Y" %in% input$icbc) {
-            tt2<- subset(ImbNYSE(), Time>=t1 & Time<=t2, select=c("Time", "iMarket", "iPaired", "iShares"))
-          } 
-          if ("A" %in% input$icbc) {
-            tt3<- subset(ImbARCA(), Time>=t1 & Time<=t2, select=c("Time", "iMarket", "iPaired", "iShares"))
+  ImbalPlot <- renderPlotly({
+    input$go
+    isolate({
+      if (nrow(data())>0) {
+      withProgress(message = 'Imbalance Chart', value = 0.3, {
+          ay2 <- list(
+            zeroline = FALSE,
+            tickfont = list(color = "green"),
+            overlaying = "y",
+            side = "right"
+          )
+          
+          ay1<- list (
+            zeroline = FALSE,
+            tickfont = list(color = "darkblue"),
+            title=""
+          )
+          xax <- list(
+            title="",
+            zeroline = FALSE,
+            tickfont = list(color = "darkblue")
+          )
+          if (length(input$icbc)>0) {
+            event <- event_data("plotly_selected", source = "subset")
+            tt<- data.frame()
+            tt1<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
+            tt2<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
+            tt3<- data.frame(Time=as.Date(character()), iMarket=numeric(), iPaired=as.numeric(),iShares=as.numeric())
+            
+            if ("Q" %in% input$icbc) {
+              tt1<- ImbNSDQ()[,c("Time", "iMarket" ,"iPaired", "iShares")]
+            } 
+            if ("Y" %in% input$icbc) {
+              tt2<- ImbNYSE()[,c("Time", "iMarket", "iPaired", "iShares")]
+            } 
+            if ("A" %in% input$icbc) {
+              tt3<- ImbARCA()[,c("Time", "iMarket", "iPaired", "iShares")]
+            }
+            
+            if (nrow(data.frame(event)) >0 ) {
+              t1<- as.POSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  "%Y-%m-%d %H:%M:%S", tz ="GMT")-1
+              t2<- as.POSIXct(as.character(as.POSIXct(max(event$x)/1000, origin="1970-01-01", tz="EET")),  "%Y-%m-%d %H:%M:%S", tz ="GMT")+1
+              if ("Q" %in% input$icbc) {
+                tt1<- subset(ImbNSDQ(), Time>=t1 & Time<=t2, select=c("Time", "iMarket","iPaired", "iShares"))
+              } 
+              if ("Y" %in% input$icbc) {
+                tt2<- subset(ImbNYSE(), Time>=t1 & Time<=t2, select=c("Time", "iMarket", "iPaired", "iShares"))
+              } 
+              if ("A" %in% input$icbc) {
+                tt3<- subset(ImbARCA(), Time>=t1 & Time<=t2, select=c("Time", "iMarket", "iPaired", "iShares"))
+              }
+            } 
+            tt<- rbind(tt1,tt2,tt3)
+            
+            if ("A" %in% input$icbc==FALSE) {
+              py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
+                # add_trace(x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
+                add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares") %>%
+                layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(  margin = list(autosize=FALSE,r=30), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)') 
+            } else {
+              py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
+                add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares")
+              py <- add_trace(tt[tt$iMarket !=0, ], x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
+                layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(margin = list(autosize=FALSE, r=30), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
+            }
+          } else {
+            dd<- data.frame(Time=as.Date(character()), iShares=as.numeric())
+            py<- plot_ly(dd, x=Time, y=iShares, mode="markers") %>% layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, paper_bgcolor= 'rgba(249,249,263,.85)')
           }
-        } 
-        tt<- rbind(tt1,tt2,tt3)
-        
-        if ("A" %in% input$icbc==FALSE) {
-          py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
-            # add_trace(x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
-            add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares") %>%
-            layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(  margin = list(autosize=FALSE,r=30), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)') 
-        } else {
-          py <- plot_ly(tt, x= Time, y=iPaired, mode="markers", marker=list( size=5 , opacity=0.9, color="steelblue"), name="iPaired") %>%
-            add_trace(x=Time, y=iShares, mode="markers",yaxis = "y2", marker=list( size=5 , opacity=0.9, color="green"), name="iShares")
-          py <- add_trace(tt[tt$iMarket !=0, ], x=Time, y=iMarket, mode="markers", marker=list( size=5 , opacity=0.9, color="violet"), name="iMarket") %>%
-            layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, yaxis2 = ay2) %>% layout(margin = list(autosize=FALSE, r=30), hovermode = "closest", paper_bgcolor= 'rgba(249,249,263,.85)')
-        }
-      } else {
-        dd<- data.frame(Time=as.Date(character()), iShares=as.numeric())
-        py<- plot_ly(dd, x=Time, y=iShares, mode="markers") %>% layout(xaxis=xax, showlegend = FALSE, yaxis=ay1, paper_bgcolor= 'rgba(249,249,263,.85)')
+          if (input$radio==2) {
+            py<- layout(py, xaxis=list(title = "", showgrid = F,
+                                       tickfont = list(color = fontcolor())),
+                        yaxis = list( gridcolor = "#8c8c8c",
+                                      tickfont = list(color = fontcolor()), 
+                                      titlefont = list(color = fontcolor())),
+                        yaxis2 = list( gridcolor = "#8c8c8c",
+                                       tickfont = list(color = fontcolor()), 
+                                       titlefont = list(color = fontcolor())),
+                        paper_bgcolor = papercolor(),
+                        plot_bgcolor = plotcolor())
+          }
+          incProgress(1)
+          setProgress(1)
+        })
+        if (nrow(plotdelay())==0) {py<- plot_ly(plotdelay(), x=Time, y=tPrice, mode="markers")}
+        py
       }
-      if (input$radio==2) {
-        py<- layout(py, xaxis=list(title = "", showgrid = F,
-                                   tickfont = list(color = fontcolor())),
-                    yaxis = list( gridcolor = "#8c8c8c",
-                                  tickfont = list(color = fontcolor()), 
-                                  titlefont = list(color = fontcolor())),
-                    yaxis2 = list( gridcolor = "#8c8c8c",
-                                   tickfont = list(color = fontcolor()), 
-                                   titlefont = list(color = fontcolor())),
-                    paper_bgcolor = papercolor(),
-                    plot_bgcolor = plotcolor())
-      }
-      incProgress(1)
-      setProgress(1)
     })
-    if (nrow(plotdelay())==0) {py<- plot_ly(plotdelay(), x=Time, y=tPrice, mode="markers")}
-    py
   })
   
   
   ###Bottom plot 
   trendPlot2 <- renderPlotly({
-    withProgress(message = 'Bottom Chart', value = 0.1, {
+    input$go
+    isolate({
+    if (nrow(BottomPlot())>0) {
+    withProgress(message = 'Bottom Chart', value = 0.5, {
       
       xax <- list(
         title = "",
@@ -1177,6 +1375,8 @@ shinyServer(function(input, output, session) {
                   plot_bgcolor = plotcolor())
     }
     py
+    }
+    })
   })
   
   
@@ -1185,6 +1385,11 @@ shinyServer(function(input, output, session) {
     event <- event_data("plotly_selected", source = "subset")
     event<- event[event$y>0, ]
     
+    if (input$futures) {
+      columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice") 
+    } else {
+      columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange") 
+    }
     
     if (nrow(data.frame(event))>1) {
       t1<- fastPOSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
@@ -1199,7 +1404,7 @@ shinyServer(function(input, output, session) {
         if (tDiff>100 & tDiff<2*3600) {nav<- NavData2()}
         if (tDiff>2*3600) {nav<- NavData3()}
       }
-      md<- md[, union(c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange"), ColumnsForDiffDays()) ]
+      md<- md[ ,columns ]
       if (length(input$nav)>0) {
         data<- rbind(md, nav)
         data<- data[order(data$Time),]
@@ -1208,7 +1413,7 @@ shinyServer(function(input, output, session) {
       } else {Out<- md[(md$Time>=t1 & md$Time<=t2), ]}
       
     } else {
-      md= data()[, union(c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange"), ColumnsForDiffDays()) ]
+      md= data()[ ,columns ]
       if (length(input$nav)>0) {
         nav<- NavData1()
         Out<- rbind(md, nav)
@@ -1221,17 +1426,15 @@ shinyServer(function(input, output, session) {
     Out$tSide<- factor(Out$tSide)
     Out$tType<- factor(Out$tType)
     Out$Time=format(Out$Time, format="%H:%M:%OS")
-    #Out$Fracs<- sapply(strsplit(Out$Time, ".", fixed=TRUE), "[", 2)
-    #Out$Time<- sapply(strsplit(Out$Time, ".", fixed=TRUE), "[", 1)
-    #Out<- Out[, c("Time", "Fracs", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange", "B_NAV", "M_NAV", "A_NAV")]
-    
     return (Out)
   })
   
-  suppressWarnings(library(DT))
-  output$mytable <- renderDataTable (datatable(DataOut(), extensions = 'ColVis',
-                                               options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip', colVis = list(exclude = c(0, 1), activate = 'mouseover')),
-                                               filter = list(position = 'top', clear = FALSE)))
+  output$mytable <- renderDataTable(
+    datatable(DataOut(), extensions = 'ColVis',
+               options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip',
+                         colVis = list(exclude = c(0, 1), activate = 'mouseover')),
+                filter = list(position = 'top', clear = FALSE)))
+  
   output$downloadData <- downloadHandler(
     filename = function() {paste0(dateText(),"_MarketData.csv", sep="") },
     content = function(file) {
@@ -1240,7 +1443,6 @@ shinyServer(function(input, output, session) {
   )
   
   ###Data tab for orders
-  
   OrderOut<- reactive({
     id<- unique(dd()$orderid)
     if ( is.null(id)) {
@@ -1264,32 +1466,45 @@ shinyServer(function(input, output, session) {
   )
   
   output$plotui <- renderUI({
-    output$plot<- trendPlot
-    plotlyOutput("plot", width="100%", height = 900)
+    #if (nrow(data1())>0) {
+      output$plot<- trendPlot
+      plotlyOutput("plot", width="100%", height = 900)
+    #}
   })
   
   output$plotui2 <- renderUI({
+    #if (nrow(data1())>0) {
     output$plot2<- trendPlot2
-    plotlyOutput("plot2", width="100%", height = 200) 
+    plotlyOutput("plot2", width="100%", height = 200)
+    #}
   })
   
   output$plotui3 <- renderUI({
+    #if (nrow(data1())>0) {
     output$plot3<- ImbalPlot
-    plotlyOutput("plot3", width="100%", height = 200) 
+    plotlyOutput("plot3", width="100%", height = 200)
+    #}
   })
   
   
   inputChoices <- reactive({
     choices<- unique(Order()$strategy)
-    #if (length(choices)>1) {choices= c("None", choices, "All")} else  {choices= c("None", choices)}
     choices= c("None", choices)
     return(choices)
   })
   
-  output$strat <- renderUI({selectInput('strat', 'Orders:',  choices=inputChoices(), selected = input$strat, width="100") })
+  output$strat <- renderUI({
+    input$go
+    isolate({
+      selectInput('strat', 'Orders:',  choices=inputChoices(), selected = input$strat, width="100")
+      })
+  })
   
   output$name<- renderUI({
-    if (input$radio=="2") {eval(parse(text='includeCSS("slate.css")'))}
+    input$go
+    isolate({
+      if (input$radio=="2") {eval(parse(text='includeCSS("slate.css")'))}
+      })
   })
   
   output$textcol<- renderUI({
@@ -1301,16 +1516,21 @@ shinyServer(function(input, output, session) {
   output$brush <- renderPrint({
         #### Volume Chart
         
-        if (delta()<=30) {x="Time1"}
-        if ((delta()>30) & (delta()<5*60)) {x="Time2"}
-        if ((delta()>=5*60) & (delta()<30*60)) {x="Time3"}
-        if (delta()>=30*60) {x="Time4"}
+        #if (delta()<=30) {x="Time1"}
+        #if ((delta()>30) & (delta()<5*60)) {x="Time2"}
+        #if ((delta()>=5*60) & (delta()<30*60)) {x="Time3"}
+        #if (delta()>=30*60) {x="Time4"}
         
         #VolumeAggregate<- plotDelayGreater()[ ,c(x, "tShares" )]
         #VolumeAggregate$tShares<- as.numeric(as.character(VolumeAggregate$tShares))
         #VolumeAggregate<- eval(parse(text=paste0("aggregate(.~",x,", data=VolumeAggregate, FUN=sum)")))
         #VolumeAggregate[ ,x]<- fastPOSIXct(VolumeAggregate[ ,x], required.components = 6L, tz = "GMT")
-        return(c(x, head(plotDelayGreater())))
+        #message(x)
+        #return(delta())
+    #message(plotDelayGreater()$tPrice) 
+    #return (nrow(Imbalance()))
+    #return(PrevClose())
+
     })
   
   #session$onSessionEnded(stopApp)

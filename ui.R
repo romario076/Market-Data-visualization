@@ -1,6 +1,7 @@
 
 suppressWarnings(library(shinythemes))
 suppressWarnings(library(plotly))
+library(shinyjs)
 
 getDate<- function() {
   d<- Sys.Date()-2
@@ -11,55 +12,78 @@ getDate<- function() {
 
 shinyUI(navbarPage(
   #theme = shinytheme("spacelab"),
+  #shinyjs::useShinyjs(),
   theme="http://bootswatch.com/spacelab/bootstrap.css",
   title="MarketData Visualization",
     tabPanel( 'Charts',
       uiOutput('name'),
-            tags$style(type="text/css",
-                    ".shiny-output-error { visibility: hidden; }",
-                       ".shiny-output-error:before { visibility: hidden; }"
-            ),
+            #tags$style(type="text/css",
+            #        ".shiny-output-error { visibility: hidden; }",
+            #           ".shiny-output-error:before { visibility: hidden; }"
+            #),
             htmlOutput('mess'),
-            hr(),
               fluidRow(
                 tags$head(tags$style("#date{font-size: 15px;font-style: italic;}")),
                 #tags$head(tags$style("#strat{font-size: 12px;}")),
                 column(2, style="color:steelblue", 
                        wellPanel(
                           #style = "background-color: #001133;",
-                          dateInput('date',label = 'Date input:',value = getDate(), width="150"),
-                          #uiOutput("GetDate"),
-                          div(style="display:inline-block;vertical;",textInput("from", label = "From:", value="09:25:00", width="100")),
-                          div(style="display:inline-block;vertical-align:top; width: 20px;"),
-                          div(style="display:inline-block;vertical;",textInput("to", label = "To:", value="11:00:00", width="100")),
-                          HTML("<br>"),
-                          textInput("text", label = "Symbol:", value="XBI", width="100"),
-                          tags$style(type='text/css', ".selectize-input { padding: 3px; min-height: 0;} .selectize-dropdown { line-height: 10px; }"),
-                          uiOutput("strat"),
-                          
-                          div(style="display: inline-block", checkboxInput('spread', 'Bid-Ask', value = TRUE)),
-                          div(style="display:inline-block;vertical-align:top; width: 20px;",HTML("<br>")),
-                          div(style="display: inline-block;vertical",checkboxInput('level1', 'Level1')),
+                          #dateInput('date',label = 'Date input:',value = getDate(), width="150"),
+     
+                          div(style="display:inline-block;vertical", dateInput('date',label = 'Date input:',value = "2017-02-28", width="120")),
+                          div(style="display:inline-block;vertical-align:top; width: 15px;",HTML("<br>")),
+                          useShinyjs(),
+                          div(style="display:inline-block;vertical", checkboxInput('futures', 'Futures', value = TRUE)),
+
                           div(class="row", HTML("<span>")),
                           
-                          div(style="display: inline-block", checkboxInput('prevclx', 'YClose', value = FALSE)),
-                          div(style="display:inline-block;vertical-align:top; width: 23px;",HTML("<br>")),
-                          div(style="display: inline-block;vertical",checkboxInput('colorEx', 'ColorExchange', value = FALSE)),
+                          #div(style="display: inline-block;vertical-align:top; width: 30px;",selectInput("ddllgra", "Function:",c('mean','median','sd','count','min','max'), selected='mean')),
+                          #div(style="display: inline-block;vertical-align:top; width: 30px;",textInput(inputId="xlimitsmax", label="x-max", value = 0.5)),
                           
-                          checkboxInput('news', 'News', value = FALSE),
-                          checkboxInput('OverLap', 'Avoid overlapping'),
-                          checkboxGroupInput("icbc", label = h4("iCBC:"), choices = list("NSDQ" = "Q", "NYSE" = "Y", "ARCA" = "A"), inline=TRUE),
+                          div(style="display:inline-block;vertical;",textInput("from", label = "From:", value="09:25:00", width="100")),
+                          div(style="display:inline-block;vertical-align:top; width: 20px;"),
+                          div(style="display:inline-block;vertical;",textInput("to", label = "To:", value="09:35:00", width="100")),
+                          HTML("<br>"),
+                          textInput("text", label = "Symbol:", value="CLU7", width="100"),
+                          tags$style(type='text/css', ".selectize-input { padding: 3px; min-height: 0;} .selectize-dropdown { line-height: 10px; }"),
+                          uiOutput("strat"),
+
+                          
+                          div(style="display:inline-block", checkboxInput('spread', 'Bid-Ask', value = TRUE)),
+                          div(style="display:inline-block;vertical-align:top; width: 20px;",HTML("<br>")),
+                          div(style="display:inline-block;vertical",checkboxInput('level1', 'Level1')),
+                          div(class="row", HTML("<span>")),
+                          
+                          div(style="display:inline-block", checkboxInput('prevclx', 'YClose', value = FALSE)),
+                          div(style="display:inline-block;vertical-align:top; width: 23px;",HTML("<br>")),
+                          div(style="display:inline-block;vertical",checkboxInput('colorEx', 'ColorExchange', value = FALSE)),
+                          
+                          div(style="display:inline-block", checkboxInput('news', 'News', value = FALSE)),
+                          div(style="display:inline-block;vertical-align:top; width: 35px;",HTML("<br>")),
+                          div(style="display:inline-block;vertical",checkboxInput('OverLap', 'Avoid overlapping')),
+                          
+                          #checkboxInput('news', 'News', value = FALSE),
+                          #checkboxInput('OverLap', 'Avoid overlapping'),
+                          checkboxGroupInput("icbc", label = h4("imbalances:"), choices = list("NSDQ" = "Q", "NYSE" = "Y", "ARCA" = "A"), inline=TRUE),
                           checkboxGroupInput("nav", label = h4("Nav:"), choices = list("B_Nav" = "B", "M_Nav" = "M", "A_NAV" = "A"), inline=TRUE),
-                          radioButtons("host", label = h4("Host:"), choices = list("UA" = 1, "US" = 2), selected = 2, inline = TRUE),
+                          radioButtons("host", label = h4("Host:"), choices = list("UA" = 1, "US" = 2), selected = 1, inline = TRUE),
                           radioButtons("radio", label = h4("Style:"), choices = list("White" = 1, "Black" = 2), selected = 1, inline = TRUE),
-                          submitButton("Submit")
+                          #submitButton("Submit"),
+                          div(style="display:inline-block", actionButton("go", "Submit", style="color: #fff; background-color: #337ab7; border-color: #2e6da4")),
+                          div(style="display:inline-block;vertical-align:top; width: 25px;",HTML("<br>")),
+                          div(style="display:inline-block", actionLink(inputId = 'help',label = 'Help?')),
+                          hidden(div(id='text_help',
+                                     hr(),
+                                      helpText("Default page is empty. For generating charts fill corresponding inputs field and press 'Submit' button.
+                                                After switching on 'Futures' checkBox data will be taken from FuturesDB, and some inputs will be not 
+                                                available.")))
                         )
                     ),
                 column(10, 
                        uiOutput("plotui"),
                        uiOutput("plotui3"),
-                       uiOutput("plotui2"),
-                       verbatimTextOutput("brush")
+                       uiOutput("plotui2")
+                       #verbatimTextOutput("brush")
                 )
               )
   ),
