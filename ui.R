@@ -30,10 +30,10 @@ shinyUI(navbarPage(
                           #style = "background-color: #001133;",
                           #dateInput('date',label = 'Date input:',value = getDate(), width="150"),
      
-                          div(style="display:inline-block;vertical", dateInput('date',label = 'Date input:',value = "2017-02-28", width="120")),
+                          div(style="display:inline-block;vertical", dateInput('date',label = 'Date input:',value = "2017-08-21", width="120")),
                           div(style="display:inline-block;vertical-align:top; width: 15px;",HTML("<br>")),
                           useShinyjs(),
-                          div(style="display:inline-block;vertical", checkboxInput('futures', 'Futures', value = TRUE)),
+                          div(style="display:inline-block;vertical", checkboxInput('futures', 'Futures', value = FALSE)),
 
                           div(class="row", HTML("<span>")),
                           
@@ -44,7 +44,7 @@ shinyUI(navbarPage(
                           div(style="display:inline-block;vertical-align:top; width: 20px;"),
                           div(style="display:inline-block;vertical;",textInput("to", label = "To:", value="09:35:00", width="100")),
                           HTML("<br>"),
-                          textInput("text", label = "Symbol:", value="CLU7", width="100"),
+                          textInput("text", label = "Symbol:", value="DWAQ", width="100"),
                           tags$style(type='text/css', ".selectize-input { padding: 3px; min-height: 0;} .selectize-dropdown { line-height: 10px; }"),
                           uiOutput("strat"),
 
@@ -61,10 +61,11 @@ shinyUI(navbarPage(
                           div(style="display:inline-block", checkboxInput('news', 'News', value = FALSE)),
                           div(style="display:inline-block;vertical-align:top; width: 35px;",HTML("<br>")),
                           div(style="display:inline-block;vertical",checkboxInput('OverLap', 'Avoid overlapping')),
+                          checkboxInput('volumeChart', 'VolumeChart'),
                           
                           #checkboxInput('news', 'News', value = FALSE),
                           #checkboxInput('OverLap', 'Avoid overlapping'),
-                          checkboxGroupInput("icbc", label = h4("imbalances:"), choices = list("NSDQ" = "Q", "NYSE" = "Y", "ARCA" = "A"), inline=TRUE),
+                          checkboxGroupInput("icbc", label = h4("Imbalances:"), choices = list("NSDQ" = "Q", "NYSE" = "Y", "ARCA" = "A"), inline=TRUE),
                           checkboxGroupInput("nav", label = h4("Nav:"), choices = list("B_Nav" = "B", "M_Nav" = "M", "A_NAV" = "A"), inline=TRUE),
                           radioButtons("host", label = h4("Host:"), choices = list("UA" = 1, "US" = 2), selected = 1, inline = TRUE),
                           radioButtons("radio", label = h4("Style:"), choices = list("White" = 1, "Black" = 2), selected = 1, inline = TRUE),
@@ -82,8 +83,8 @@ shinyUI(navbarPage(
                 column(10, 
                        uiOutput("plotui"),
                        uiOutput("plotui3"),
-                       uiOutput("plotui2")
-                       #verbatimTextOutput("brush")
+                       uiOutput("plotui2"),
+                       verbatimTextOutput("brush")
                 )
               )
   ),
