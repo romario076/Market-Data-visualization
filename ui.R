@@ -1,4 +1,4 @@
-
+15
 suppressWarnings(library(shinythemes))
 suppressWarnings(library(plotly))
 library(shinyjs)
@@ -30,7 +30,7 @@ shinyUI(navbarPage(
                           #style = "background-color: #001133;",
                           #dateInput('date',label = 'Date input:',value = getDate(), width="150"),
      
-                          div(style="display:inline-block;vertical", dateInput('date',label = 'Date input:',value = "2017-08-21", width="120")),
+                          div(style="display:inline-block;vertical", dateInput('date',label = 'Date input:',value = "2017-09-15", width="120")),
                           div(style="display:inline-block;vertical-align:top; width: 15px;",HTML("<br>")),
                           useShinyjs(),
                           div(style="display:inline-block;vertical", checkboxInput('futures', 'Futures', value = FALSE)),
@@ -44,7 +44,7 @@ shinyUI(navbarPage(
                           div(style="display:inline-block;vertical-align:top; width: 20px;"),
                           div(style="display:inline-block;vertical;",textInput("to", label = "To:", value="09:35:00", width="100")),
                           HTML("<br>"),
-                          textInput("text", label = "Symbol:", value="DWAQ", width="100"),
+                          textInput("text", label = "Symbol:", value="AAPL", width="100"),
                           tags$style(type='text/css', ".selectize-input { padding: 3px; min-height: 0;} .selectize-dropdown { line-height: 10px; }"),
                           uiOutput("strat"),
 
@@ -83,8 +83,8 @@ shinyUI(navbarPage(
                 column(10, 
                        uiOutput("plotui"),
                        uiOutput("plotui3"),
-                       uiOutput("plotui2"),
-                       verbatimTextOutput("brush")
+                       uiOutput("plotui2")
+                       #verbatimTextOutput("brush")
                 )
               )
   ),

@@ -1424,56 +1424,58 @@ shinyServer(function(input, output, session) {
   DataOut<-  reactive({
     event <- event_data("plotly_selected", source = "subset")
     event<- event[event$y>0, ]
-    
-    if (input$futures) {
-      columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice") 
-    } else {
-      columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange") 
-    }
-    
-    if (nrow(data.frame(event))>1) {
-      t1<- fastPOSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
-      t2<- fastPOSIXct(as.character(as.POSIXct(max(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
-      tDiff= as.numeric(t2-t1, units="secs")
-      if (tDiff<= 1800) {md<-data1()} else {
-        if (tDiff>1800 & tDiff<5*3600) {md<-Seconds()}
-        if (tDiff>5*3600 & tDiff<7*(3600)) {md<-Seconds10()}
-        if (tDiff>7*3600) {md<-Minutes()}
+    #input$go
+    #isolate({
+      if (input$futures) {
+        columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice") 
+      } else {
+        columns<- c("Time", "MsgSource", "Reason", "Bid_P", "Ask_P", "tShares", "tSide", "tType", "tPrice", "iCBC", "iMarket", "iShares", "iPaired", "iExchange", "B_NAV", "M_NAV", "A_NAV") 
       }
-      if (tDiff<= 100) {nav<- NavData1()} else {
-        if (tDiff>100 & tDiff<2*3600) {nav<- NavData2()}
-        if (tDiff>2*3600) {nav<- NavData3()}
+      
+      if (nrow(data.frame(event))>1) {
+        t1<- fastPOSIXct(as.character(as.POSIXct(min(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
+        t2<- fastPOSIXct(as.character(as.POSIXct(max(event$x)/1000, origin="1970-01-01", tz="EET")),  required.components = 6L, tz ="GMT")
+        tDiff= as.numeric(t2-t1, units="secs")
+        if (tDiff<= 1800) {md<-data1()} else {
+          if (tDiff>1800 & tDiff<5*3600) {md<-Seconds()}
+          if (tDiff>5*3600 & tDiff<7*(3600)) {md<-Seconds10()}
+          if (tDiff>7*3600) {md<-Minutes()}
+        }
+        if (tDiff<= 100) {nav<- NavData1()} else {
+          if (tDiff>100 & tDiff<2*3600) {nav<- NavData2()}
+          if (tDiff>2*3600) {nav<- NavData3()}
+        }
+        #md<- md[ ,columns ]
+        if (length(input$nav)>0) {
+          data<- rbind(md, nav)
+          data<- data[order(data$Time),]
+          rownames(data)<- NULL
+          Out<- data[(data$Time>=t1 & data$Time<=t2), ]
+        } else {Out<- md[(md$Time>=t1 & md$Time<=t2), ]}
+        
+      } else {
+        md= data()[, columns]
+        if (length(input$nav)>0) {
+          nav<- NavData1()
+          Out= md
+          #Out<- rbind(md, nav)
+          #Out<- Out[order(Out$Time),]
+          rownames(Out)<- NULL
+        } else {Out<- md}
+        
       }
-      md<- md[ ,columns ]
-      if (length(input$nav)>0) {
-        data<- rbind(md, nav)
-        data<- data[order(data$Time),]
-        rownames(data)<- NULL
-        Out<- data[(data$Time>=t1 & data$Time<=t2), ]
-      } else {Out<- md[(md$Time>=t1 & md$Time<=t2), ]}
-      
-    } else {
-      md= data()[ ,columns ]
-      if (length(input$nav)>0) {
-        nav<- NavData1()
-        Out<- rbind(md, nav)
-        Out<- Out[order(Out$Time),]
-        rownames(Out)<- NULL
-      } else {Out<- md}
-      
-    }
-    Out$Reason<- factor(Out$Reason)
-    Out$tSide<- factor(Out$tSide)
-    Out$tType<- factor(Out$tType)
-    Out$Time=format(Out$Time, format="%H:%M:%OS")
-    return (Out)
+      Out$Reason<- factor(Out$Reason)
+      Out$tSide<- factor(Out$tSide)
+      Out$tType<- factor(Out$tType)
+      Out$Time=format(Out$Time, format="%H:%M:%OS")
+      return (Out)
+   # })
   })
   
   output$mytable <- renderDataTable(
-    datatable(DataOut(), extensions = 'ColVis',
-               options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip',
-                         colVis = list(exclude = c(0, 1), activate = 'mouseover')),
-                filter = list(position = 'top', clear = FALSE)))
+    datatable(DataOut(), extensions = 'Buttons',
+              options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip'),
+              filter = list(position = 'top', clear = FALSE)))
   
   output$downloadData <- downloadHandler(
     filename = function() {paste0(dateText(),"_MarketData.csv", sep="") },
@@ -1493,11 +1495,12 @@ shinyServer(function(input, output, session) {
     return(data)
   })
   
+  
   output$OrdersTable <- renderDataTable(
-    datatable(OrderOut(), extensions = 'ColVis',options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip',
-              colVis = list(exclude = c(0, 1), activate = 'mouseover')),
+    datatable(OrderOut(), extensions = 'Buttons',options = list(pageLength = 15, searchHighlight = TRUE,dom = 'C<"clear">lfrtip'),
               filter = list(position = 'top', clear = FALSE))
   )
+  
   output$downloadOrders <- downloadHandler(
     filename = function() {paste0(dateText(),"_Orders.csv", sep="") },
     content = function(file) {
@@ -1571,6 +1574,8 @@ shinyServer(function(input, output, session) {
     #plotdelay()[(plotdelay()$Bid_P==0) | (plotdelay()$Ask_P==0),]
     #return(head(plotdelay()))
 
+    #return (DataOut())
+    return(DataOut())
     })
   
   #session$onSessionEnded(stopApp)
